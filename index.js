@@ -46,34 +46,31 @@ conexion
 
 const app = express();
 
-/* ===========================
-   ✅ CORS CONFIG (ESTABLE)
-=========================== */
 const allowedOrigins = new Set([
   "http://localhost:3000",
   "http://localhost:5173",
   "https://colitasyamor.netlify.app",
 ]);
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Permite requests sin Origin (Postman, Railway health checks, server-to-server)
-      if (!origin) return callback(null, true);
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
 
-      if (allowedOrigins.has(origin)) {
-        return callback(null, true);
-      }
+  if (origin && allowedOrigins.has(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    // NO cookies: mantenlo sin credentials (si luego necesitas cookies, lo ajustamos)
+    // res.setHeader("Access-Control-Allow-Credentials", "true");
+  }
 
-      // Importante: devuelve error para que sea claro (y no "silencioso")
-      return callback(new Error(`CORS blocked for origin: ${origin}`));
-    },
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: false, // ✅ ponlo en false si NO usas cookies/sesiones
-    maxAge: 86400, // cachea preflight 24h
-  })
-);
+  // Responder SIEMPRE el preflight
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+
+  next();
+});
 
 // ✅ Maneja preflight para todas las rutas
 app.options("*", cors());
