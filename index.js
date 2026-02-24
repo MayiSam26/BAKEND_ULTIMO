@@ -2,7 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const path = require("path");
 const bodyParser = require("body-parser");
-const cors = require("cors");
+const cors = require("cors"); // Usaremos esto para la seguridad
 
 const conexion = require("./database/conection");
 
@@ -46,34 +46,19 @@ conexion
 
 const app = express();
 
-const allowedOrigins = new Set([
-  "http://localhost:3000",
-  "http://localhost:5173",
-  "https://colitasyamor.netlify.app",
-]);
-
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-
-  if (origin && allowedOrigins.has(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Vary", "Origin");
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-    // NO cookies: mantenlo sin credentials (si luego necesitas cookies, lo ajustamos)
-    // res.setHeader("Access-Control-Allow-Credentials", "true");
-  }
-
-  // Responder SIEMPRE el preflight
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
-  }
-
-  next();
-});
-
-// ✅ Maneja preflight para todas las rutas
-app.options("*", cors());
+/* =========================== 
+   SOLUCIÓN DEL PROBLEMA CORS
+   =========================== */
+app.use(cors({
+  origin: [
+    "http://localhost:3000",       // Tu frontend local
+    "http://localhost:5173",       // Por si usas Vite local
+    "https://mayudash2026.netlify.app" // Tu frontend en Netlify
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true // Permite que las cookies/tokens viajen si es necesario
+}));
 /* =========================== */
 
 app.use(bodyParser.json());
