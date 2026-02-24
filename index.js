@@ -53,7 +53,8 @@ app.use(cors({
   origin: [
     "http://localhost:3000",       // Tu frontend local
     "http://localhost:5173",       // Por si usas Vite local
-    "https://mayudash2026.netlify.app" // Tu frontend en Netlify
+    "https://mayudash2026.netlify.app",
+    "https://colitasyamor.netlify.app" // Tu frontend en Netlify
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
