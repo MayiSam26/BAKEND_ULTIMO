@@ -19,7 +19,6 @@ const donante = require("./router/Donante/Index");
 const adoptantes = require("./router/Adoptantes");
 const colitas = require("./router/Colitas");
 const adopciones = require("./router/Adopciones");
-const apadrinado = require("./router/Apadrinado");
 const ingresos = require("./router/Ingresos/Index");
 const verifyToken = require("./middleware/auth");
 
@@ -36,7 +35,6 @@ require("./Entity/Donante");
 require("./Entity/Adoptantes");
 require("./Entity/Colitas");
 require("./Entity/Adopciones");
-require("./Entity/Apadriando");
 require("./Entity/Ingresos");
 require("./Entity/Auditoria");
 
@@ -89,7 +87,6 @@ app.use("/redes-social", verifyToken, redesSocial());
 app.use("/egreso", verifyToken, egreso());
 app.use("/donante", verifyToken, donante());
 app.use("/adoptante", verifyToken, adoptantes());
-app.use("/apadrinado", verifyToken, apadrinado());
 app.use("/ingresos", verifyToken, ingresos());
 
 const port = process.env.PORT || 5000;
