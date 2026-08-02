@@ -47,7 +47,11 @@ conexion
 
 const app = express();
 
-/* =========================== 
+// Railway corre detrás de un proxy inverso; esto permite que el rate limiter
+// identifique la IP real del cliente en vez de la del proxy
+app.set('trust proxy', 1);
+
+/* ===========================
    SOLUCIÓN DEL PROBLEMA CORS
    =========================== */
 app.use(cors({
