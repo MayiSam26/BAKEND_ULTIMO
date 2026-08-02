@@ -1,10 +1,10 @@
-require("dotenv").config({path:".env"})
+require("dotenv").config()
 const{Sequelize} = require("sequelize")
 
-const database = new Sequelize('railway','root','xUlxsnaGmbTHOaKfSwDaYvyWSHqIUceC',{
-    host:'switchback.proxy.rlwy.net',   /* .localhost.. */
-    dialect:'mysql',   /* ..mysql. */
-    port:31251,     /* ..3306. */
+const database = new Sequelize(process.env.DB_NAME, process.env.DB_USER, process.env.DB_PASSWORD,{
+    host: process.env.DB_HOST,
+    dialect:'mysql',
+    port: process.env.DB_PORT,
     operatorsAliases:false,
     define:{
         timestamps:false

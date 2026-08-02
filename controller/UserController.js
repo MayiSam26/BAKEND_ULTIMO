@@ -63,9 +63,8 @@ exports.sessionUser = async (req,res,next) =>{
                  //si el usuario es correcto
                 const token = jwt.sign({
                     usuario:findOneUser.usuario,
-                    pass:findOneUser.password,
                     iduser:findOneUser.iduser
-                },"llavecita",{
+                },process.env.JWT_SECRET,{
                     expiresIn:"4h"
                 })
                  //retornar el token
