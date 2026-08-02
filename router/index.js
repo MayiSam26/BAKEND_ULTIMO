@@ -22,6 +22,10 @@ module.exports = () =>{
     router.post("/recuperar/verificar",recoveryLimiter,userController.verificarRespuesta)
     router.post("/recuperar/reset",recoveryLimiter,userController.resetPassword)
 
+    //usuarios (protegido)
+    router.get("/usuario/list",verifyToken,userController.getUsuarios)
+    router.post("/usuario/foto",verifyToken,userController.subirFoto)
+
     //admin pages
     router.get("/home/list",verifyToken,homeController.getHome)
     router.get("/home/:id",verifyToken,homeController.getHomeById)

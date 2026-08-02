@@ -25,6 +25,10 @@ const tblUser = conexion.define('tbluser', {
   respuesta_secreta: {
     type: Sequelize.STRING,
     allowNull: true,
+  },
+  foto: {
+    type: Sequelize.STRING,
+    allowNull: true,
   }
 }, {
   tableName: 'tbluser', // Nombre de la tabla en la base de datos

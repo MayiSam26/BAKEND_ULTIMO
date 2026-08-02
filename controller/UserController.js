@@ -1,6 +1,24 @@
 const tblUser = require("../Entity/User");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
+const multer = require("multer");
+const path = require("path");
+
+const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const uploadFoto = multer({
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => cb(null, 'uploads/'),
+        filename: (req, file, cb) => cb(null, 'perfil-' + Date.now() + path.extname(file.originalname))
+    }),
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        if (allowedMimeTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Solo se permiten imágenes (jpg, png, webp, gif)'));
+        }
+    }
+}).single('foto');
 
 exports.createUser = async (req, res, next) => {
     try {
@@ -74,6 +92,7 @@ exports.sessionUser = async (req, res, next) => {
         return res.json({
             code: '000',
             usuario: findOneUser.usuario,
+            foto: findOneUser.foto,
             token: token
         });
 
@@ -81,6 +100,39 @@ exports.sessionUser = async (req, res, next) => {
         console.log("error server: ", error);
         return res.status(500).json({ 'Error server': error });
     }
+}
+
+// Protegido: lista de usuarios registrados (sin password ni datos de la
+// pregunta secreta).
+exports.getUsuarios = async (req, res, next) => {
+    try {
+        const usuarios = await tblUser.findAll({
+            attributes: ['iduser', 'usuario', 'foto']
+        });
+        return res.json({ code: '000', message: 'success', data: usuarios });
+    } catch (error) {
+        console.log("error server: ", error);
+        return res.status(500).json({ code: '001', message: 'Error del servidor', data: null });
+    }
+}
+
+// Protegido: el usuario logueado sube/actualiza su propia foto de perfil.
+exports.subirFoto = async (req, res, next) => {
+    uploadFoto(req, res, async (err) => {
+        if (err) {
+            return res.status(400).json({ code: '001', message: err.message, data: null });
+        }
+        if (!req.file) {
+            return res.status(400).json({ code: '001', message: 'No se ha subido ninguna imagen', data: null });
+        }
+        try {
+            await tblUser.update({ foto: req.file.path }, { where: { iduser: req.user.iduser } });
+            return res.json({ code: '000', message: 'Foto actualizada correctamente', data: { foto: req.file.path } });
+        } catch (error) {
+            console.log("error server: ", error);
+            return res.status(500).json({ code: '001', message: 'Error del servidor', data: null });
+        }
+    });
 }
 
 // Protegido: el usuario ya logueado configura su propia pregunta secreta.
