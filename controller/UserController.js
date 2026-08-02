@@ -1,6 +1,6 @@
 const tblUser = require("../Entity/User");
 const jwt = require("jsonwebtoken");
-const bcrypt = require("bcrypt")
+const bcrypt = require("bcrypt");
 
 exports.createUser = async (req, res, next) => {
     try {
@@ -13,7 +13,7 @@ exports.createUser = async (req, res, next) => {
 
         const user = new tblUser({
             usuario: usuario,
-            password: await bcrypt.hash(pass, 12)  // Aquí se arregla el error
+            password: await bcrypt.hash(pass, 12)
         });
 
         await user.save();
@@ -24,59 +24,61 @@ exports.createUser = async (req, res, next) => {
             data: null
         };
 
-        res.json(result);
+        return res.json(result);
 
     } catch (error) {
         console.log("error server: ", error);
-        res.status(500).json({ 'Error server': error });
+        return res.status(500).json({ 'Error server': error });
     }
 }
 
-exports.sessionUser = async (req,res,next) =>{
+exports.sessionUser = async (req, res, next) => {
     try {
-        const{usuario,pass} = req.body
-        console.log("pass",pass)
+        const { usuario, pass } = req.body;
+
+        console.log("intento de login con usuario:", usuario);
+
         const findOneUser = await tblUser.findOne({
-            where:{
-                usuario:usuario
+            where: {
+                usuario: usuario
             }
-        })
-        // validamos si el usuario existe
-        if(!findOneUser){
-            const result ={
-                code :'001',
-                message:'Ese usuario no existe',
-                data:null
-            }
-            res.json(result); 
-            next()
-        }else{
-            if(!bcrypt.compareSync(req.body.pass,findOneUser.password)){
-                const result ={
-                    code :'001',
-                    message:'Contraseña incorrecta o usuario incorrecto',
-                    data:null
-                }
-                res.json(result); 
-                next();
-            }else{
-                 //si el usuario es correcto
-                const token = jwt.sign({
-                    usuario:findOneUser.usuario,
-                    iduser:findOneUser.iduser
-                },process.env.JWT_SECRET,{
-                    expiresIn:"4h"
-                })
-                 //retornar el token
-                 res.json(
-                    {
-                    code:'000',
-                    usuario:usuario,
-                    token});
-            }
+        });
+
+        // Validamos si el usuario existe
+        if (!findOneUser) {
+            return res.json({
+                code: '001',
+                message: 'Ese usuario no existe',
+                data: null
+            });
         }
+
+        // Validamos la contraseña
+        if (!bcrypt.compareSync(pass, findOneUser.password)) {
+            return res.json({
+                code: '001',
+                message: 'Contraseña incorrecta o usuario incorrecto',
+                data: null
+            });
+        }
+
+        // Si la contraseña es correcta, generamos el token
+        const token = jwt.sign({
+            usuario: findOneUser.usuario,
+            iduser: findOneUser.iduser
+        }, process.env.JWT_SECRET, {
+            expiresIn: "4h"
+        });
+
+        // Retornar el token y respuesta exitosa
+        return res.json({
+            code: '000',
+            usuario: findOneUser.usuario,
+            token: token
+        });
+
     } catch (error) {
-        console.log("error server: ",error)
-        res.status(500).json({ 'Error server': error });
+        console.log("error server: ", error);
+        return res.status(500).json({ 'Error server': error });
     }
 }
