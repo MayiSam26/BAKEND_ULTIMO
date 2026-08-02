@@ -184,6 +184,74 @@ exports.createAdopcionColitas = async (req, res, next) => {
   }
 };
 
+// Público: una persona interesada se identifica (DNI, datos de contacto) y
+// postula a adoptar una mascota puntual. Crea el adoptante y la solicitud de
+// adopción (Estado: "proceso") en un solo paso, y marca la mascota como no
+// disponible mientras se revisa, para evitar solicitudes duplicadas.
+exports.solicitarAdopcion = async (req, res, next) => {
+  try {
+    const { Nombre, Apellido, Dni, Direccion, telefono, Motivo, idanimal } = req.body;
+
+    if (!Nombre || !Apellido || !Dni || !Direccion || !telefono || !Motivo || !idanimal) {
+      return res.status(400).json({
+        code: '001',
+        message: 'Completa todos los campos para enviar tu solicitud.',
+        data: null,
+      });
+    }
+
+    if (!/^\d{8}$/.test(Dni)) {
+      return res.status(400).json({
+        code: '001',
+        message: 'El DNI debe tener 8 dígitos numéricos.',
+        data: null,
+      });
+    }
+
+    const animal = await tblColitas.findOne({ where: { idanimal } });
+    if (!animal) {
+      return res.status(404).json({ code: '001', message: 'La mascota no existe.', data: null });
+    }
+    if (animal.estado !== 'En refugio') {
+      return res.status(409).json({
+        code: '001',
+        message: 'Esta mascota ya no está disponible para adopción.',
+        data: null,
+      });
+    }
+
+    const nuevoAdoptante = await tbladoptante.create({
+      Nombre,
+      Apellido,
+      Dni,
+      Direccion,
+      telefono,
+      Motivo,
+      Fecha_Registro: moment().format('YYYY-MM-DD'),
+    });
+
+    await tbladopcion.create({
+      idadoptante: nuevoAdoptante.idadoptante,
+      idanimal,
+      Fecha_Adopcion: new Date(),
+      Observaciones: Motivo,
+      Estado: 'proceso',
+      fecharegistro: new Date(),
+    });
+
+    await tblColitas.update({ estado: 'proceso' }, { where: { idanimal } });
+
+    res.json({
+      code: '000',
+      message: 'Tu solicitud fue enviada. El refugio se pondrá en contacto contigo pronto.',
+      data: null,
+    });
+  } catch (error) {
+    console.log("error server: ", error);
+    res.status(500).json({ code: '001', message: 'Error al enviar la solicitud.', data: null });
+  }
+};
+
 exports.findByIdAdopcion = async (req, res, next) => {
   try {
     const id = req.params.id;

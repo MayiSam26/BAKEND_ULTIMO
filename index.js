@@ -73,10 +73,11 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// "/" y "/plan-mensual" y "/colitas" manejan su propia mezcla de rutas públicas/protegidas internamente
+// "/", "/plan-mensual", "/colitas" y "/adopciones" manejan su propia mezcla de rutas públicas/protegidas internamente
 app.use("/", router());
 app.use("/plan-mensual", planMensual());
 app.use("/colitas", colitas());
+app.use("/adopciones", adopciones());
 
 // el resto es exclusivo del panel admin
 app.use("/tipo-persona", verifyToken, tipoPersona());
@@ -88,7 +89,6 @@ app.use("/redes-social", verifyToken, redesSocial());
 app.use("/egreso", verifyToken, egreso());
 app.use("/donante", verifyToken, donante());
 app.use("/adoptante", verifyToken, adoptantes());
-app.use("/adopciones", verifyToken, adopciones());
 app.use("/apadrinado", verifyToken, apadrinado());
 app.use("/ingresos", verifyToken, ingresos());
 
