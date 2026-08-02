@@ -5,7 +5,7 @@ const { Op } = require("sequelize");
 
 exports.getAdoptantes = async (req, res, next) => {
   try {
-    const { search, fechaBusqueda } = req.body;
+    const { search, fechaBusqueda, telefono } = req.body;
 
     let filters = {};
 
@@ -17,9 +17,17 @@ exports.getAdoptantes = async (req, res, next) => {
           ];
     }
 
-    if (fechaBusqueda) {
+    if (telefono) {
+      filters.telefono = { [Op.like]: `%${telefono}%` };
+    }
+
+    if (fechaBusqueda && moment(fechaBusqueda, "YYYY-MM-DD", true).isValid()) {
+      // Rango del día completo en vez de igualdad exacta: Fecha_Registro es
+      // un DATETIME con hora real, así que Op.eq nunca calzaba con la fecha
+      // que el usuario elegía en el filtro.
+      const fecha = moment(fechaBusqueda).format("YYYY-MM-DD");
       filters.Fecha_Registro = {
-        [Op.eq]: fechaBusqueda,
+        [Op.between]: [`${fecha} 00:00:00`, `${fecha} 23:59:59`],
       };
     }
 

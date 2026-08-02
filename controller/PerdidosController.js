@@ -5,7 +5,8 @@ exports.getPerdidos = async(req, res) =>{
     try {
         const{nombreBusqueda,idTipoAnimalBusqueda,idGeneroBusqueda,statusBusqueda,fechaBusqueda} = req.body
         const status = statusBusqueda ? `'${statusBusqueda}'`:null
-        const dates = fechaBusqueda ? `'${moment(fechaBusqueda).add(1, "days").format('YYYY-MM-DD')}'`:null
+        const fechaValida = fechaBusqueda && moment(fechaBusqueda, "YYYY-MM-DD", true).isValid()
+        const dates = fechaValida ? `'${moment(fechaBusqueda).add(1, "days").format('YYYY-MM-DD')}'`:null
         const search = nombreBusqueda ? `'${nombreBusqueda}'`:`''`
         await sequilize.query(`CALL sp_getMascotasPerdidos_all(${search},${idTipoAnimalBusqueda},${idGeneroBusqueda},${status},${dates})`, { type: sequilize.QueryTypes.RAW })
         .then(results => {

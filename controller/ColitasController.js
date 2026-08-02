@@ -42,11 +42,12 @@ exports.getColitas = async (req, res) => {
             filters.idgenero = p_idgenero;
         }
 
-        if (fechaBusqueda) {
+        if (fechaBusqueda && moment(fechaBusqueda, "YYYY-MM-DD", true).isValid()) {
+            const fecha = moment(fechaBusqueda).format("YYYY-MM-DD");
             filters.Fecha_Ingreso = {
                 [Op.between]: [
-                    `${fechaBusqueda} 00:00:00`,
-                    `${fechaBusqueda} 23:59:59`,
+                    `${fecha} 00:00:00`,
+                    `${fecha} 23:59:59`,
                 ],
             };
         }

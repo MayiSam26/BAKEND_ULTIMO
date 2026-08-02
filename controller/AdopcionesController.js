@@ -15,11 +15,12 @@ exports.getAdopciones = async (req, res, next) => {
       filters.Estado = state;
     }
 
-    if (fechaBusqueda) {
+    if (fechaBusqueda && moment(fechaBusqueda, "YYYY-MM-DD", true).isValid()) {
+  const fecha = moment(fechaBusqueda).format("YYYY-MM-DD");
   filters.Fecha_Adopcion = {
     [Op.between]: [
-      `${fechaBusqueda} 00:00:00`,
-      `${fechaBusqueda} 23:59:59`,
+      `${fecha} 00:00:00`,
+      `${fecha} 23:59:59`,
     ],
   };
 }
