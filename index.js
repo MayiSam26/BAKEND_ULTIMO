@@ -21,6 +21,7 @@ const colitas = require("./router/Colitas");
 const adopciones = require("./router/Adopciones");
 const apadrinado = require("./router/Apadrinado");
 const ingresos = require("./router/Ingresos/Index");
+const verifyToken = require("./middleware/auth");
 
 require("./Entity/User");
 require("./Entity/TipoPersona");
@@ -68,21 +69,24 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+// "/" y "/plan-mensual" y "/colitas" manejan su propia mezcla de rutas públicas/protegidas internamente
 app.use("/", router());
-app.use("/tipo-persona", tipoPersona());
-app.use("/genero", genero());
 app.use("/plan-mensual", planMensual());
-app.use("/tipo-animal", planAnimal());
-app.use("/amo", amo());
-app.use("/perdidos", perdidos());
-app.use("/redes-social", redesSocial());
-app.use("/egreso", egreso());
-app.use("/donante", donante());
-app.use("/adoptante", adoptantes());
 app.use("/colitas", colitas());
-app.use("/adopciones", adopciones());
-app.use("/apadrinado", apadrinado());
-app.use("/ingresos", ingresos());
+
+// el resto es exclusivo del panel admin
+app.use("/tipo-persona", verifyToken, tipoPersona());
+app.use("/genero", verifyToken, genero());
+app.use("/tipo-animal", verifyToken, planAnimal());
+app.use("/amo", verifyToken, amo());
+app.use("/perdidos", verifyToken, perdidos());
+app.use("/redes-social", verifyToken, redesSocial());
+app.use("/egreso", verifyToken, egreso());
+app.use("/donante", verifyToken, donante());
+app.use("/adoptante", verifyToken, adoptantes());
+app.use("/adopciones", verifyToken, adopciones());
+app.use("/apadrinado", verifyToken, apadrinado());
+app.use("/ingresos", verifyToken, ingresos());
 
 const port = process.env.PORT || 5000;
 app.listen(port, () => console.log(`Server running on port ${port}`));
