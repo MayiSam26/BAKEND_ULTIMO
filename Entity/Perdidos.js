@@ -1,6 +1,10 @@
 const { Sequelize } = require('sequelize');
 const conexion = require("../database/conection")
 
+// Los tipos y el mapeo de "foto" -> columna real "img" reflejan el esquema
+// verificado en la BD de Railway (SHOW COLUMNS), que no coincidía con la
+// definición original de este modelo (esa discrepancia era la causa de que
+// crear/editar mascotas perdidas fallara en silencio contra la BD real).
 const tblmascotaperdida = conexion.define('tblmascotaperdida', {
   idmascotaperdida: {
     type: Sequelize.INTEGER,
@@ -9,47 +13,53 @@ const tblmascotaperdida = conexion.define('tblmascotaperdida', {
   },
   iduser: {
     type: Sequelize.INTEGER,
-    allowNull: false,
+    allowNull: true,
   },
   iddueno: {
     type: Sequelize.INTEGER,
-    allowNull: false,
+    allowNull: true,
   },
   Nombre: {
     type: Sequelize.STRING,
-    allowNull: false,
+    allowNull: true,
   },
   foto: {
     type: Sequelize.STRING,
-    allowNull: false,
+    allowNull: true,
+    field: 'img',
   },
   Edad: {
-    type: Sequelize.INTEGER,
-    allowNull: false,
+    type: Sequelize.STRING,
+    allowNull: true,
   },
   idtipoanimal: {
     type: Sequelize.INTEGER,
-    allowNull: false,
+    allowNull: true,
   },
   idgenero: {
     type: Sequelize.INTEGER,
-    allowNull: false,
+    allowNull: true,
   },
   tamano: {
     type: Sequelize.STRING,
-    allowNull: false,
+    allowNull: true,
   },
   Observaciones: {
-    type: Sequelize.TEXT,
-    allowNull: false,
+    type: Sequelize.STRING,
+    allowNull: true,
   },
   Fecha_Extravio: {
     type: Sequelize.DATE,
-    allowNull: false,
+    allowNull: true,
+  },
+  status: {
+    type: Sequelize.STRING,
+    allowNull: true,
+    defaultValue: 'P',
   }
 }, {
-  tableName: 'tblmascotaperdida', 
-  
+  tableName: 'tblmascotaperdida',
+
 });
 
 module.exports = tblmascotaperdida;

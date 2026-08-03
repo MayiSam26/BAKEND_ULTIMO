@@ -6,12 +6,8 @@ module.exports = () =>{
     router.post("/create",perdidosController.createPerdidos)
     router.get("/recientes",perdidosController.getPerdidosTopfour)
     router.get("/detail/:id",perdidosController.getDetail)
-    //router.put("/update/:id",PlanController.updatePlanMensual)
-    //router.get("/detail/:id",PlanController.getDetailPlan)
-    //crear user
-    //router.post("/list",userController.createUser)
-    
-
+    router.put("/update/:id",perdidosController.updatePerdidos)
+    router.delete("/delete/:id",perdidosController.deletePerdidos)
 
     return router
 }
