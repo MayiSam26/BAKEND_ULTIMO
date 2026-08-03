@@ -92,14 +92,21 @@ exports.getReporte = async (req, res, next) => {
         where: { Estado: "proceso" },
         raw: true
       });
-  
-      res.json({ 
+
+      const rechazado = await tbladopcion.findOne({
+        attributes: [[fn("COUNT", col("idadopcion")), "rechazado"]],
+        where: { Estado: "rechazado" },
+        raw: true
+      });
+
+      res.json({
         code: "000",
         message: "success",
         data: [{
             ...total,
             ...adoptado,
-            ...proceso
+            ...proceso,
+            ...rechazado
           }]
       });
     } catch (error) {
@@ -297,7 +304,7 @@ exports.updateAdopcion = async (req, res, next) => {
         idadopcion: id,
       },
     });
-   
+
     if (!existe) {
       const result = {
         code: "001",
@@ -307,17 +314,36 @@ exports.updateAdopcion = async (req, res, next) => {
       res.json(result);
       next();
     } else {
-      await tbladopcion.update(req.body, {
+      const nuevoEstado = (req.body.Estado || "").toLowerCase();
+
+      if (nuevoEstado === "rechazado" && !(req.body.MotivoRechazo || "").trim()) {
+        return res.status(400).json({
+          code: "001",
+          message: "Debes indicar el motivo del rechazo.",
+          data: null,
+        });
+      }
+
+      // Si se rechaza, se limpia cualquier motivo anterior; si no, no se toca.
+      const body = { ...req.body };
+      if (nuevoEstado !== "rechazado") {
+        body.MotivoRechazo = null;
+      }
+
+      await tbladopcion.update(body, {
         where: {
           idadopcion: id,
         },
       });
 
-      console.log("req.body",req.body)
+      // Un rechazo no es un estado de la mascota: se libera de nuevo para
+      // que otra persona pueda adoptarla. Solo proceso/adoptado se reflejan
+      // tal cual en Colitas.
+      const estadoAnimal = nuevoEstado === "rechazado" ? "En refugio" : req.body.Estado;
       await tblColitas.update(
-        {estado:req.body.Estado},
-      { where: { idanimal: existe.idanimal } }
-    );
+        { estado: estadoAnimal },
+        { where: { idanimal: existe.idanimal } }
+      );
 
       const result = {
         code: "000",

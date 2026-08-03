@@ -26,16 +26,20 @@ const tbladopcion = conexion.define('tbladopcion', {
     allowNull: false,
   },
   Observaciones: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     allowNull: false,
   },
   Estado: {
-    type: Sequelize.INTEGER,
+    type: Sequelize.STRING,
     allowNull: false,
   },
   fecharegistro: {
     type: Sequelize.DATE,
     allowNull: false,
+  },
+  MotivoRechazo: {
+    type: Sequelize.STRING,
+    allowNull: true,
   }
 }, {
   tableName: 'tbladopcion', 
