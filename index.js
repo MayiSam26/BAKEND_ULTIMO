@@ -22,6 +22,7 @@ const adopciones = require("./router/Adopciones");
 const ingresos = require("./router/Ingresos/Index");
 const seguimientos = require("./router/Seguimiento");
 const entrevistas = require("./router/Entrevista");
+const noticias = require("./router/Noticia");
 const verifyToken = require("./middleware/auth");
 
 require("./Entity/User");
@@ -41,6 +42,7 @@ require("./Entity/Ingresos");
 require("./Entity/Auditoria");
 require("./Entity/Seguimiento");
 require("./Entity/Entrevista");
+require("./Entity/Noticia");
 
 conexion
   .sync()
@@ -80,6 +82,7 @@ app.use("/", router());
 app.use("/plan-mensual", planMensual());
 app.use("/colitas", colitas());
 app.use("/adopciones", adopciones());
+app.use("/noticias", noticias());
 
 // el resto es exclusivo del panel admin
 app.use("/tipo-persona", verifyToken, tipoPersona());
