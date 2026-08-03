@@ -1,5 +1,6 @@
 const tblnoticia = require("../Entity/Noticia");
 const multer = require("multer");
+const path = require("path");
 const { Op } = require("sequelize");
 
 const storage = multer.diskStorage({
@@ -7,10 +8,21 @@ const storage = multer.diskStorage({
     cb(null, "uploads/");
   },
   filename: function (req, file, cb) {
-    cb(null, Date.now() + "-" + file.originalname);
+    cb(null, Date.now() + "-" + path.basename(file.originalname));
   },
 });
-const upload = multer({ storage: storage }).single("imagen");
+const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Solo se permiten imágenes (jpg, png, webp, gif)"));
+    }
+  },
+}).single("imagen");
 
 // Admin: todas las noticias, cualquier estado.
 exports.getNoticias = async (req, res, next) => {

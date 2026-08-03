@@ -47,7 +47,7 @@ exports.getCreate = async(req, res) =>{
 exports.getRedesSocialById = async(req, res) =>{
     try {
         const id = req.params.id;
-        await sequilize.query(`CALL sp_getRedesById(${id})`, { type: sequilize.QueryTypes.RAW })
+        await sequilize.query(`CALL sp_getRedesById(?)`, { replacements: [id], type: sequilize.QueryTypes.RAW })
         .then(results => {
             const result ={
                 code :'000',

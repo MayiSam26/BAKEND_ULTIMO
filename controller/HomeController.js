@@ -25,9 +25,8 @@ exports.getHome = async(req, res) =>{
 }
 exports.getHomeById = async(req, res) =>{
     try {
-        const id = req.params.id; 
-        console.log(id)
-        await sequilize.query(`CALL sp_getRefugioById(${id})`, { type: sequilize.QueryTypes.RAW })
+        const id = req.params.id;
+        await sequilize.query(`CALL sp_getRefugioById(?)`, { replacements: [id], type: sequilize.QueryTypes.RAW })
         .then(results => {
             const result ={
                 code :'000',

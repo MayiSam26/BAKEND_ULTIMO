@@ -7,13 +7,22 @@ const storage = multer.diskStorage({
       cb(null, 'uploads/');
     },
     filename: function (req, file, cb) {
-        cb(null, file.originalname);
+        cb(null, Date.now() + '-' + path.basename(file.originalname));
     }
 });
 
-
-
-const upload = multer({ storage: storage }).single('img');
+const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        if (allowedMimeTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Solo se permiten imágenes (jpg, png, webp, gif)'));
+        }
+    }
+}).single('img');
 
 exports.getPlanMensual = async(req, res) =>{
     try {
@@ -187,7 +196,7 @@ exports.deletPlanById = async(req, res, next) =>{
 exports.getDetailPlan = async(req, res, next)=>{
     try {
         const id = req.params.id;
-        await sequilize.query(`CALL sp_getByIdPlanMensual(${id})`, { type: sequilize.QueryTypes.RAW })
+        await sequilize.query(`CALL sp_getByIdPlanMensual(?)`, { replacements: [id], type: sequilize.QueryTypes.RAW })
         .then(results => {
             const result ={
                 code :'000',

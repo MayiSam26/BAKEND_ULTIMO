@@ -4,6 +4,7 @@ const tbladoptante = require("../Entity/Adoptantes");
 const tblColitas = require("../Entity/Colitas");
 const moment = require("moment");
 const multer = require("multer");
+const path = require("path");
 const { Op } = require("sequelize");
 
 const storage = multer.diskStorage({
@@ -11,10 +12,21 @@ const storage = multer.diskStorage({
     cb(null, "uploads/");
   },
   filename: function (req, file, cb) {
-    cb(null, Date.now() + "-" + file.originalname);
+    cb(null, Date.now() + "-" + path.basename(file.originalname));
   },
 });
-const upload = multer({ storage: storage }).single("evidencia");
+const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Solo se permiten imágenes (jpg, png, webp, gif)"));
+    }
+  },
+}).single("evidencia");
 
 exports.getSeguimientos = async (req, res, next) => {
   try {

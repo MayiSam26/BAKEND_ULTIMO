@@ -55,6 +55,18 @@ const app = express();
 // identifique la IP real del cliente en vez de la del proxy
 app.set('trust proxy', 1);
 
+// No revelar el framework, y cabeceras básicas de seguridad. nosniff es
+// especialmente importante porque /uploads sirve archivos subidos por
+// usuarios: sin esta cabecera el navegador podría "adivinar" que un archivo
+// es HTML/JS y ejecutarlo aunque el Content-Type diga otra cosa.
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains');
+  next();
+});
+
 /* ===========================
    SOLUCIÓN DEL PROBLEMA CORS
    =========================== */

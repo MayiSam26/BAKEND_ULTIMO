@@ -4,11 +4,16 @@ const moment = require('moment')
 exports.getPerdidos = async(req, res) =>{
     try {
         const{nombreBusqueda,idTipoAnimalBusqueda,idGeneroBusqueda,statusBusqueda,fechaBusqueda} = req.body
-        const status = statusBusqueda ? `'${statusBusqueda}'`:null
+        const status = statusBusqueda || null
         const fechaValida = fechaBusqueda && moment(fechaBusqueda, "YYYY-MM-DD", true).isValid()
-        const dates = fechaValida ? `'${moment(fechaBusqueda).add(1, "days").format('YYYY-MM-DD')}'`:null
-        const search = nombreBusqueda ? `'${nombreBusqueda}'`:`''`
-        await sequilize.query(`CALL sp_getMascotasPerdidos_all(${search},${idTipoAnimalBusqueda},${idGeneroBusqueda},${status},${dates})`, { type: sequilize.QueryTypes.RAW })
+        const dates = fechaValida ? moment(fechaBusqueda).add(1, "days").format('YYYY-MM-DD') : null
+        const search = nombreBusqueda || ''
+        const tipoAnimal = idTipoAnimalBusqueda || null
+        const genero = idGeneroBusqueda || null
+        await sequilize.query(
+            `CALL sp_getMascotasPerdidos_all(?, ?, ?, ?, ?)`,
+            { replacements: [search, tipoAnimal, genero, status, dates], type: sequilize.QueryTypes.RAW }
+        )
         .then(results => {
             const result ={
                 code :'000',
@@ -94,7 +99,7 @@ exports.getDetail = async(req, res, next) =>{
         res.json(result); 
         next()
     }else{
-        await sequilize.query(`CALL sp_detailmascota_perdida(${id})`, { type: sequilize.QueryTypes.RAW })
+        await sequilize.query(`CALL sp_detailmascota_perdida(?)`, { replacements: [id], type: sequilize.QueryTypes.RAW })
         .then(results => {
             const result ={
                 code :'000',
