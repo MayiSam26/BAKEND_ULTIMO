@@ -20,6 +20,7 @@ const adoptantes = require("./router/Adoptantes");
 const colitas = require("./router/Colitas");
 const adopciones = require("./router/Adopciones");
 const ingresos = require("./router/Ingresos/Index");
+const seguimientos = require("./router/Seguimiento");
 const verifyToken = require("./middleware/auth");
 
 require("./Entity/User");
@@ -37,6 +38,7 @@ require("./Entity/Colitas");
 require("./Entity/Adopciones");
 require("./Entity/Ingresos");
 require("./Entity/Auditoria");
+require("./Entity/Seguimiento");
 
 conexion
   .sync()
@@ -88,6 +90,7 @@ app.use("/egreso", verifyToken, egreso());
 app.use("/donante", verifyToken, donante());
 app.use("/adoptante", verifyToken, adoptantes());
 app.use("/ingresos", verifyToken, ingresos());
+app.use("/seguimientos", verifyToken, seguimientos());
 
 const port = process.env.PORT || 5000;
 app.listen(port, () => console.log(`Server running on port ${port}`));
