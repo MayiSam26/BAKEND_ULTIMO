@@ -29,6 +29,20 @@ const tblUser = conexion.define('tbluser', {
   foto: {
     type: Sequelize.STRING,
     allowNull: true,
+  },
+  correo: {
+    type: Sequelize.STRING,
+    allowNull: true,
+  },
+  rol: {
+    type: Sequelize.STRING,
+    allowNull: false,
+    defaultValue: 'Administrador',
+  },
+  activo: {
+    type: Sequelize.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
   }
 }, {
   tableName: 'tbluser', // Nombre de la tabla en la base de datos

@@ -4,6 +4,12 @@ const bcrypt = require("bcrypt");
 const multer = require("multer");
 const path = require("path");
 
+// Roles del sistema según la tesis (CU02, CU17, CU18): Administrador,
+// Voluntario y Veterinario. "Persona interesada" no tiene cuenta propia en
+// este sistema: sus solicitudes se registran directamente al enviar el
+// formulario de adopción público, sin necesidad de iniciar sesión.
+const ROLES_VALIDOS = ["Administrador", "Voluntario", "Veterinario"];
+
 const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const uploadFoto = multer({
     storage: multer.diskStorage({
@@ -22,15 +28,35 @@ const uploadFoto = multer({
 
 exports.createUser = async (req, res, next) => {
     try {
-        const { usuario, pass } = req.body;
+        const { usuario, pass, correo, rol } = req.body;
 
-        // Validar que ambos campos existan
-        if (!usuario || !pass) {
-            return res.status(400).json({ code: '001', message: 'Usuario y contraseña son requeridos.' });
+        // Reglas de negocio (CU-01 Crear usuario administrador): usuario,
+        // correo y rol son obligatorios; el usuario y el correo deben ser
+        // únicos; el rol debe ser uno de los definidos por el sistema.
+        if (!usuario || !pass || !correo || !rol) {
+            return res.status(400).json({ code: '001', message: 'Usuario, correo, contraseña y rol son requeridos.', data: null });
+        }
+        if (!ROLES_VALIDOS.includes(rol)) {
+            return res.status(400).json({ code: '001', message: 'El rol indicado no es válido.', data: null });
+        }
+        if (pass.length < 4) {
+            return res.status(400).json({ code: '001', message: 'La contraseña debe tener al menos 4 caracteres.', data: null });
+        }
+
+        const existeUsuario = await tblUser.findOne({ where: { usuario } });
+        if (existeUsuario) {
+            return res.status(400).json({ code: '001', message: 'Ese nombre de usuario ya está registrado.', data: null });
+        }
+        const existeCorreo = await tblUser.findOne({ where: { correo } });
+        if (existeCorreo) {
+            return res.status(400).json({ code: '001', message: 'Ese correo electrónico ya está registrado.', data: null });
         }
 
         const user = new tblUser({
             usuario: usuario,
+            correo: correo,
+            rol: rol,
+            activo: true,
             password: await bcrypt.hash(pass, 12)
         });
 
@@ -47,6 +73,74 @@ exports.createUser = async (req, res, next) => {
     } catch (error) {
         console.log("error server: ", error);
         return res.status(500).json({ 'Error server': error });
+    }
+}
+
+exports.updateUser = async (req, res, next) => {
+    try {
+        const id = req.params.id;
+        const { usuario, correo, rol } = req.body;
+
+        const existe = await tblUser.findOne({ where: { iduser: id } });
+        if (!existe) {
+            return res.json({ code: '001', message: 'No existe el usuario', data: null });
+        }
+        if (rol && !ROLES_VALIDOS.includes(rol)) {
+            return res.status(400).json({ code: '001', message: 'El rol indicado no es válido.', data: null });
+        }
+        if (usuario) {
+            const dup = await tblUser.findOne({ where: { usuario } });
+            if (dup && dup.iduser !== Number(id)) {
+                return res.status(400).json({ code: '001', message: 'Ese nombre de usuario ya está registrado.', data: null });
+            }
+        }
+        if (correo) {
+            const dup = await tblUser.findOne({ where: { correo } });
+            if (dup && dup.iduser !== Number(id)) {
+                return res.status(400).json({ code: '001', message: 'Ese correo electrónico ya está registrado.', data: null });
+            }
+        }
+
+        const updates = {};
+        if (usuario) updates.usuario = usuario;
+        if (correo) updates.correo = correo;
+        if (rol) updates.rol = rol;
+
+        await tblUser.update(updates, { where: { iduser: id } });
+
+        return res.json({ code: '000', message: 'Se actualizó correctamente', data: null });
+    } catch (error) {
+        console.log("error server: ", error);
+        return res.status(500).json({ code: '001', message: 'Error del servidor', data: null });
+    }
+}
+
+// CU17: activar o desactivar una cuenta. No se permite que un usuario se
+// desactive a sí mismo (se quedaría sin poder volver a entrar).
+exports.setUsuarioEstado = async (req, res, next) => {
+    try {
+        const id = req.params.id;
+        const { activo } = req.body;
+
+        if (Number(id) === req.user.iduser) {
+            return res.status(400).json({ code: '001', message: 'No puedes desactivar tu propia cuenta.', data: null });
+        }
+
+        const existe = await tblUser.findOne({ where: { iduser: id } });
+        if (!existe) {
+            return res.json({ code: '001', message: 'No existe el usuario', data: null });
+        }
+
+        await tblUser.update({ activo: !!activo }, { where: { iduser: id } });
+
+        return res.json({
+            code: '000',
+            message: activo ? 'Cuenta activada correctamente' : 'Cuenta desactivada correctamente',
+            data: null
+        });
+    } catch (error) {
+        console.log("error server: ", error);
+        return res.status(500).json({ code: '001', message: 'Error del servidor', data: null });
     }
 }
 
@@ -80,10 +174,21 @@ exports.sessionUser = async (req, res, next) => {
             });
         }
 
-        // Si la contraseña es correcta, generamos el token
+        // CU17: una cuenta desactivada por el administrador no puede iniciar sesión.
+        if (findOneUser.activo === false) {
+            return res.json({
+                code: '001',
+                message: 'Esta cuenta está desactivada. Contacta al administrador del sistema.',
+                data: null
+            });
+        }
+
+        // Si la contraseña es correcta, generamos el token. Se incluye el rol
+        // para que el panel muestre solo las funciones permitidas (CU02).
         const token = jwt.sign({
             usuario: findOneUser.usuario,
-            iduser: findOneUser.iduser
+            iduser: findOneUser.iduser,
+            rol: findOneUser.rol
         }, process.env.JWT_SECRET, {
             expiresIn: "4h"
         });
@@ -93,6 +198,7 @@ exports.sessionUser = async (req, res, next) => {
             code: '000',
             usuario: findOneUser.usuario,
             foto: findOneUser.foto,
+            rol: findOneUser.rol,
             token: token
         });
 
@@ -107,7 +213,7 @@ exports.sessionUser = async (req, res, next) => {
 exports.getUsuarios = async (req, res, next) => {
     try {
         const usuarios = await tblUser.findAll({
-            attributes: ['iduser', 'usuario', 'foto']
+            attributes: ['iduser', 'usuario', 'correo', 'rol', 'activo', 'foto']
         });
         return res.json({ code: '000', message: 'success', data: usuarios });
     } catch (error) {

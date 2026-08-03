@@ -6,14 +6,17 @@ const homeController = require("../controller/HomeController")
 const UploadController = require("../controller/UploadController")
 const AuditoriaController = require("../controller/AuditoriaController")
 const verifyToken = require("../middleware/auth")
+const requireRole = require("../middleware/requireRole")
 const loginLimiter = require("../middleware/loginLimiter")
 const recoveryLimiter = require("../middleware/recoveryLimiter")
 const publicFormLimiter = require("../middleware/publicFormLimiter")
 module.exports = () =>{
     router.get("/",GeneralController.init)
 
-    //login: público. crear usuario: solo un admin ya logueado puede crear otro
-    router.post("/create-user",verifyToken,userController.createUser)
+    //login: público. Gestión de usuarios (CU17/CU18): solo Administrador
+    router.post("/create-user",verifyToken,requireRole("Administrador"),userController.createUser)
+    router.put("/usuario/update/:id",verifyToken,requireRole("Administrador"),userController.updateUser)
+    router.put("/usuario/estado/:id",verifyToken,requireRole("Administrador"),userController.setUsuarioEstado)
     router.post("/session-user",loginLimiter,userController.sessionUser)
 
     //recuperar contraseña (público, con pregunta secreta)
@@ -22,8 +25,8 @@ module.exports = () =>{
     router.post("/recuperar/verificar",recoveryLimiter,userController.verificarRespuesta)
     router.post("/recuperar/reset",recoveryLimiter,userController.resetPassword)
 
-    //usuarios (protegido)
-    router.get("/usuario/list",verifyToken,userController.getUsuarios)
+    //usuarios (protegido, solo Administrador)
+    router.get("/usuario/list",verifyToken,requireRole("Administrador"),userController.getUsuarios)
     router.post("/usuario/foto",verifyToken,userController.subirFoto)
 
     //admin pages
