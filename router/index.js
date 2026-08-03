@@ -7,6 +7,7 @@ const UploadController = require("../controller/UploadController")
 const AuditoriaController = require("../controller/AuditoriaController")
 const verifyToken = require("../middleware/auth")
 const requireRole = require("../middleware/requireRole")
+const requirePermission = require("../middleware/requirePermission")
 const loginLimiter = require("../middleware/loginLimiter")
 const recoveryLimiter = require("../middleware/recoveryLimiter")
 const publicFormLimiter = require("../middleware/publicFormLimiter")
@@ -29,10 +30,10 @@ module.exports = () =>{
     router.get("/usuario/list",verifyToken,requireRole("Administrador"),userController.getUsuarios)
     router.post("/usuario/foto",verifyToken,userController.subirFoto)
 
-    //admin pages
-    router.get("/home/list",verifyToken,homeController.getHome)
-    router.get("/home/:id",verifyToken,homeController.getHomeById)
-    router.put("/home/updates/:id",verifyToken,homeController.updateHomeById)
+    //admin pages (sección "refugio", acceso configurable)
+    router.get("/home/list",verifyToken,requirePermission("refugio"),homeController.getHome)
+    router.get("/home/:id",verifyToken,requirePermission("refugio"),homeController.getHomeById)
+    router.put("/home/updates/:id",verifyToken,requirePermission("refugio"),homeController.updateHomeById)
 
     //upload Img
     router.post("/upload/file",verifyToken,UploadController.saveFile)
