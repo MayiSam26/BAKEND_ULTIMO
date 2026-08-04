@@ -25,6 +25,7 @@ const entrevistas = require("./router/Entrevista");
 const noticias = require("./router/Noticia");
 const veterinaria = require("./router/Veterinaria");
 const permisos = require("./router/Permiso");
+const apadrinado = require("./router/Apadrinado");
 const verifyToken = require("./middleware/auth");
 
 require("./Entity/User");
@@ -47,6 +48,7 @@ require("./Entity/Entrevista");
 require("./Entity/Noticia");
 require("./Entity/Veterinaria");
 require("./Entity/Permiso");
+require("./Entity/Apadrinado");
 
 conexion
   .sync()
@@ -116,6 +118,7 @@ app.use("/seguimientos", verifyToken, seguimientos());
 app.use("/entrevistas", verifyToken, entrevistas());
 app.use("/veterinaria", verifyToken, veterinaria());
 app.use("/permisos", verifyToken, permisos());
+app.use("/apadrinado", verifyToken, apadrinado());
 
 const port = process.env.PORT || 5000;
 app.listen(port, () => console.log(`Server running on port ${port}`));
