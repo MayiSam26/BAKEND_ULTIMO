@@ -25,6 +25,7 @@ const entrevistas = require("./router/Entrevista");
 const noticias = require("./router/Noticia");
 const veterinaria = require("./router/Veterinaria");
 const permisos = require("./router/Permiso");
+const contacto = require("./router/Contacto");
 const apadrinado = require("./router/Apadrinado");
 const verifyToken = require("./middleware/auth");
 
@@ -119,6 +120,7 @@ app.use("/entrevistas", verifyToken, entrevistas());
 app.use("/veterinaria", verifyToken, veterinaria());
 app.use("/permisos", verifyToken, permisos());
 app.use("/apadrinado", verifyToken, apadrinado());
+app.use("/contacto", contacto());
 
 const port = process.env.PORT || 5000;
 app.listen(port, () => console.log(`Server running on port ${port}`));
