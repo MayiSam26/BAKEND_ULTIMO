@@ -18,6 +18,7 @@ module.exports = () =>{
     router.post("/create-user",verifyToken,requireRole("Administrador"),userController.createUser)
     router.put("/usuario/update/:id",verifyToken,requireRole("Administrador"),userController.updateUser)
     router.put("/usuario/estado/:id",verifyToken,requireRole("Administrador"),userController.setUsuarioEstado)
+    router.put("/usuario/password/:id",verifyToken,requireRole("Administrador"),userController.changePasswordAdmin)
     router.post("/session-user",loginLimiter,userController.sessionUser)
 
     //recuperar contraseña (público, con pregunta secreta)

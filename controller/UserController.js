@@ -28,7 +28,7 @@ const uploadFoto = multer({
 
 exports.createUser = async (req, res, next) => {
     try {
-        const { usuario, pass, correo, rol } = req.body;
+        const { usuario, pass, correo, rol, nombres, apellidos, telefono } = req.body;
 
         // Reglas de negocio (CU-01 Crear usuario administrador): usuario,
         // correo y rol son obligatorios; el usuario y el correo deben ser
@@ -56,6 +56,9 @@ exports.createUser = async (req, res, next) => {
             usuario: usuario,
             correo: correo,
             rol: rol,
+            nombres: nombres || null,
+            apellidos: apellidos || null,
+            telefono: telefono || null,
             activo: true,
             password: await bcrypt.hash(pass, 12)
         });
@@ -79,7 +82,7 @@ exports.createUser = async (req, res, next) => {
 exports.updateUser = async (req, res, next) => {
     try {
         const id = req.params.id;
-        const { usuario, correo, rol } = req.body;
+        const { usuario, correo, rol, nombres, apellidos, telefono } = req.body;
 
         const existe = await tblUser.findOne({ where: { iduser: id } });
         if (!existe) {
@@ -105,10 +108,43 @@ exports.updateUser = async (req, res, next) => {
         if (usuario) updates.usuario = usuario;
         if (correo) updates.correo = correo;
         if (rol) updates.rol = rol;
+        if (nombres !== undefined) updates.nombres = nombres || null;
+        if (apellidos !== undefined) updates.apellidos = apellidos || null;
+        if (telefono !== undefined) updates.telefono = telefono || null;
 
         await tblUser.update(updates, { where: { iduser: id } });
 
         return res.json({ code: '000', message: 'Se actualizó correctamente', data: null });
+    } catch (error) {
+        console.log("error server: ", error);
+        return res.status(500).json({ code: '001', message: 'Error del servidor', data: null });
+    }
+}
+
+// CU17/CU18: solo el Administrador puede forzar el cambio de contraseña de
+// cualquier cuenta (a diferencia de "olvidé mi contraseña", que es
+// autoservicio y requiere la pregunta secreta del propio usuario).
+exports.changePasswordAdmin = async (req, res, next) => {
+    try {
+        const id = req.params.id;
+        const { nuevaPassword } = req.body;
+
+        if (!nuevaPassword || nuevaPassword.length < 4) {
+            return res.status(400).json({ code: '001', message: 'La nueva contraseña debe tener al menos 4 caracteres.', data: null });
+        }
+
+        const existe = await tblUser.findOne({ where: { iduser: id } });
+        if (!existe) {
+            return res.json({ code: '001', message: 'No existe el usuario', data: null });
+        }
+
+        await tblUser.update({
+            password: await bcrypt.hash(nuevaPassword, 12)
+        }, {
+            where: { iduser: id }
+        });
+
+        return res.json({ code: '000', message: 'Contraseña actualizada correctamente', data: null });
     } catch (error) {
         console.log("error server: ", error);
         return res.status(500).json({ code: '001', message: 'Error del servidor', data: null });
@@ -213,7 +249,7 @@ exports.sessionUser = async (req, res, next) => {
 exports.getUsuarios = async (req, res, next) => {
     try {
         const usuarios = await tblUser.findAll({
-            attributes: ['iduser', 'usuario', 'correo', 'rol', 'activo', 'foto']
+            attributes: ['iduser', 'usuario', 'correo', 'rol', 'activo', 'foto', 'nombres', 'apellidos', 'telefono', 'fecha_registro']
         });
         return res.json({ code: '000', message: 'success', data: usuarios });
     } catch (error) {

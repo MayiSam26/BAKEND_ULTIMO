@@ -34,6 +34,23 @@ const tblUser = conexion.define('tbluser', {
     type: Sequelize.STRING,
     allowNull: true,
   },
+  nombres: {
+    type: Sequelize.STRING,
+    allowNull: true,
+  },
+  apellidos: {
+    type: Sequelize.STRING,
+    allowNull: true,
+  },
+  telefono: {
+    type: Sequelize.STRING,
+    allowNull: true,
+  },
+  fecha_registro: {
+    type: Sequelize.DATE,
+    allowNull: true,
+    defaultValue: Sequelize.NOW,
+  },
   rol: {
     type: Sequelize.STRING,
     allowNull: false,
