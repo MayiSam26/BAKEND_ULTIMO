@@ -91,6 +91,24 @@ exports.getPerdidos = async (req, res) => {
     }
 };
 
+// RF05: pública, la usa el sitio web para mostrar mascotas perdidas reportadas
+// (foto + contacto del dueño), sin necesidad de sesión.
+exports.getPerdidosPublicas = async (req, res) => {
+    try {
+        const perdidos = await tblmascotaperdida.findAll({
+            where: { status: "P" },
+            order: [["idmascotaperdida", "DESC"]],
+        });
+
+        const data = await joinPerdidos(perdidos);
+
+        res.json({ code: "000", message: "success", data });
+    } catch (error) {
+        console.error("Error en getPerdidosPublicas:", error);
+        res.status(500).json({ error: "Error en el servidor" });
+    }
+};
+
 exports.getPerdidosTopfour = async (req, res) => {
     try {
         const perdidos = await tblmascotaperdida.findAll({

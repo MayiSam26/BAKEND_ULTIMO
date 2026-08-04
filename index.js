@@ -93,19 +93,20 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// "/", "/plan-mensual", "/colitas" y "/adopciones" manejan su propia mezcla de rutas públicas/protegidas internamente
+// "/", "/plan-mensual", "/colitas", "/adopciones", "/noticias" y "/perdidos"
+// manejan su propia mezcla de rutas públicas/protegidas internamente
 app.use("/", router());
 app.use("/plan-mensual", planMensual());
 app.use("/colitas", colitas());
 app.use("/adopciones", adopciones());
 app.use("/noticias", noticias());
+app.use("/perdidos", perdidos());
 
 // el resto es exclusivo del panel admin
 app.use("/tipo-persona", verifyToken, tipoPersona());
 app.use("/genero", verifyToken, genero());
 app.use("/tipo-animal", verifyToken, planAnimal());
 app.use("/amo", verifyToken, amo());
-app.use("/perdidos", verifyToken, perdidos());
 app.use("/redes-social", verifyToken, redesSocial());
 app.use("/egreso", verifyToken, egreso());
 app.use("/donante", verifyToken, donante());
