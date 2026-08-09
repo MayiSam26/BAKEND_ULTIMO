@@ -32,6 +32,10 @@ exports.enviarConsultaDonacion = async (req, res) => {
             port: 587,
             secure: false,
             requireTLS: true,
+            // Railway no tiene salida IPv6, y smtp.gmail.com resuelve a IPv6
+            // además de IPv4 — sin esto, Node intenta conectar por IPv6 y
+            // falla con ENETUNREACH antes de siquiera probar IPv4.
+            family: 4,
             auth: {
                 user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_PASS,
