@@ -1,4 +1,12 @@
 require("dotenv").config();
+
+// Railway no tiene salida IPv6: Node por defecto usa el orden "verbatim" de
+// dns.lookup() (lo que devuelva el sistema, que en Railway trae IPv6
+// primero), y conexiones salientes como el SMTP de Gmail terminan intentando
+// una IP inalcanzable (ENETUNREACH) en vez de la IPv4 que sí funciona. Esto
+// fuerza a todo el proceso a preferir IPv4 al resolver hostnames.
+require("dns").setDefaultResultOrder("ipv4first");
+
 const express = require("express");
 const path = require("path");
 const bodyParser = require("body-parser");
