@@ -231,7 +231,7 @@ exports.updateColitas = async (req, res, next) => {
                 });
             }
 
-            const { esterelizacion, observaciones } = req.body;
+            const { esterelizacion, observaciones, estado } = req.body;
             let imgUrl = '';
 
             if (req.file) {
@@ -242,6 +242,7 @@ exports.updateColitas = async (req, res, next) => {
             if (esterelizacion) updates.esterelizacion = esterelizacion;
             if (observaciones) updates.observaciones = observaciones;
             if (imgUrl) updates.foto = imgUrl;
+            if (estado) updates.estado = estado;
 
             try {
                 await tblanimal.update(updates, { where: { idanimal: id } });
