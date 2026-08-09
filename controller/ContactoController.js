@@ -30,6 +30,12 @@ exports.enviarConsultaDonacion = async (req, res) => {
                 user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_PASS,
             },
+            // Sin esto, si la conexión SMTP se queda colgada (red, credencial
+            // inválida, etc.) la petición nunca responde. Con esto, falla
+            // rápido con un error claro en vez de colgarse indefinidamente.
+            connectionTimeout: 10000,
+            greetingTimeout: 10000,
+            socketTimeout: 10000,
         });
 
         const destino = process.env.EMAIL_DESTINO || process.env.EMAIL_USER;
