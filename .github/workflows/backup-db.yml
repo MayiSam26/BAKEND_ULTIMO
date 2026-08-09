@@ -1,0 +1,39 @@
+name: Respaldo semanal de la base de datos
+
+on:
+  schedule:
+    # Todos los lunes 08:00 UTC (03:00 hora Perú). Railway no ofrece
+    # respaldos automáticos en el plan gratuito, así que esto lo reemplaza.
+    - cron: "0 8 * * 1"
+  workflow_dispatch: {}
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Instalar dependencias
+        run: npm install mysql2
+
+      - name: Generar respaldo
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+        run: node scripts/backup-db.js
+
+      - name: Subir respaldo como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: respaldo-bd-${{ github.run_id }}
+          path: backups/*.sql
+          retention-days: 90

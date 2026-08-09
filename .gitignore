@@ -1,3 +1,4 @@
 node_modules/
 .env
 variable.env
+backups/
