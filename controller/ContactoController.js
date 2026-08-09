@@ -25,7 +25,13 @@ exports.enviarConsultaDonacion = async (req, res) => {
         }
 
         const transporter = nodemailer.createTransport({
-            service: "gmail",
+            // Puerto 587 (STARTTLS) en vez del 465 (SSL) que usa el preset
+            // "service: gmail" por defecto — algunos hostings bloquean uno
+            // de los dos puertos SMTP salientes pero no el otro.
+            host: "smtp.gmail.com",
+            port: 587,
+            secure: false,
+            requireTLS: true,
             auth: {
                 user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_PASS,
