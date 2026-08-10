@@ -36,6 +36,13 @@ const tblveterinaria = conexion.define('tblveterinaria', {
     type: Sequelize.STRING(500),
     allowNull: true,
   },
+  // "Pendiente" | "Realizado" — solo tiene sentido cuando hay proxima_fecha
+  // (el control programado ya se atendió o sigue pendiente).
+  Estado: {
+    type: Sequelize.STRING,
+    allowNull: false,
+    defaultValue: "Pendiente",
+  },
   fecharegistro: {
     type: Sequelize.DATE,
     allowNull: false,

@@ -117,7 +117,7 @@ exports.updateRegistro = async (req, res, next) => {
       return res.json({ code: "001", message: "No existe el registro", data: null });
     }
 
-    const { tipo, descripcion, fecha, proxima_fecha, observaciones } = req.body;
+    const { tipo, descripcion, fecha, proxima_fecha, observaciones, Estado } = req.body;
     if (!tipo || !descripcion || !fecha) {
       return res.status(400).json({
         code: "001",
@@ -129,14 +129,35 @@ exports.updateRegistro = async (req, res, next) => {
       return res.status(400).json({ code: "001", message: "Fecha inválida.", data: null });
     }
 
-    await tblveterinaria.update(
-      { tipo, descripcion, fecha, proxima_fecha: proxima_fecha || null, observaciones: observaciones || null },
-      { where: { idveterinaria: id } }
-    );
+    const updates = { tipo, descripcion, fecha, proxima_fecha: proxima_fecha || null, observaciones: observaciones || null };
+    if (Estado === "Pendiente" || Estado === "Realizado") updates.Estado = Estado;
+
+    await tblveterinaria.update(updates, { where: { idveterinaria: id } });
 
     res.json({ code: "000", message: "Se actualizó correctamente", data: null });
   } catch (error) {
     console.error("Error en updateRegistro veterinaria:", error);
+    res.status(500).json({ "Error server": error });
+  }
+};
+
+// Toggle rápido desde la tabla: marcar un control como Realizado/Pendiente
+// sin tener que abrir el modal de edición completo.
+exports.setEstado = async (req, res, next) => {
+  try {
+    const id = req.params.id;
+    const { Estado } = req.body;
+    if (Estado !== "Pendiente" && Estado !== "Realizado") {
+      return res.status(400).json({ code: "001", message: "Estado inválido.", data: null });
+    }
+    const existe = await tblveterinaria.findOne({ where: { idveterinaria: id } });
+    if (!existe) {
+      return res.json({ code: "001", message: "No existe el registro", data: null });
+    }
+    await tblveterinaria.update({ Estado }, { where: { idveterinaria: id } });
+    res.json({ code: "000", message: "Se actualizó correctamente", data: null });
+  } catch (error) {
+    console.error("Error en setEstado veterinaria:", error);
     res.status(500).json({ "Error server": error });
   }
 };
