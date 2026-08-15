@@ -36,7 +36,9 @@ exports.getVisitas = async (req, res, next) => {
       const voluntario = usuariosLimpios.find((u) => u.iduser === v.iduser);
       return {
         ...v.get(),
-        voluntario: voluntario ? { iduser: voluntario.iduser, nombres: voluntario.nombres, apellidos: voluntario.apellidos } : null,
+        voluntario: voluntario
+          ? { iduser: voluntario.iduser, nombres: voluntario.nombres, apellidos: voluntario.apellidos, usuario: voluntario.usuario }
+          : null,
       };
     });
 
