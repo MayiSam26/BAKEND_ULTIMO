@@ -35,6 +35,7 @@ const veterinaria = require("./router/Veterinaria");
 const permisos = require("./router/Permiso");
 const contacto = require("./router/Contacto");
 const apadrinado = require("./router/Apadrinado");
+const voluntarioVisita = require("./router/VoluntarioVisita");
 const verifyToken = require("./middleware/auth");
 
 require("./Entity/User");
@@ -128,6 +129,7 @@ app.use("/entrevistas", verifyToken, entrevistas());
 app.use("/veterinaria", verifyToken, veterinaria());
 app.use("/permisos", verifyToken, permisos());
 app.use("/apadrinado", verifyToken, apadrinado());
+app.use("/voluntario-visita", verifyToken, voluntarioVisita());
 app.use("/contacto", contacto());
 
 const port = process.env.PORT || 5000;

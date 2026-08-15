@@ -5,14 +5,24 @@ const { Op } = require("sequelize");
 
 exports.getRegistros = async (req, res, next) => {
   try {
-    const { search, tipo, idanimal } = req.body || {};
+    const { search, tipo, idanimal, misCitas } = req.body || {};
     const filters = {};
     if (tipo) filters.tipo = tipo;
     if (idanimal) filters.idanimal = idanimal;
 
+    let order = [["fecha", "DESC"]];
+    // Usado por el calendario de "Mi Calendario" del Veterinario: solo sus
+    // propias citas con próxima fecha (o registros viejos sin veterinario
+    // asignado, para no ocultarlos).
+    if (misCitas) {
+      filters.proxima_fecha = { [Op.ne]: null };
+      filters[Op.or] = [{ iduser: req.user && req.user.iduser }, { iduser: null }];
+      order = [["proxima_fecha", "ASC"]];
+    }
+
     const registros = await tblveterinaria.findAll({
       where: filters,
-      order: [["fecha", "DESC"]],
+      order,
     });
 
     const idsAnimal = registros.map((r) => r.idanimal);
@@ -92,9 +102,14 @@ exports.createRegistro = async (req, res, next) => {
       return res.status(404).json({ code: "001", message: "La mascota no existe.", data: null });
     }
 
+    // Si quien registra es Veterinario, la cita queda enlazada a su propio
+    // usuario automáticamente (para que le aparezca en su calendario). Si es
+    // Administrador, se respeta el iduser que mande el body (o null).
+    const iduserFinal = req.user && req.user.rol === "Veterinario" ? req.user.iduser : (iduser || null);
+
     await tblveterinaria.create({
       idanimal,
-      iduser: iduser || null,
+      iduser: iduserFinal,
       tipo,
       descripcion,
       fecha,
