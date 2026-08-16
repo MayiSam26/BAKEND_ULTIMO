@@ -11,13 +11,13 @@ exports.getRegistros = async (req, res, next) => {
     if (idanimal) filters.idanimal = idanimal;
 
     let order = [["fecha", "DESC"]];
-    // Usado por el calendario de "Mi Calendario" del Veterinario: solo sus
-    // propias citas con próxima fecha (o registros viejos sin veterinario
-    // asignado, para no ocultarlos).
+    // Usado por el calendario de "Mi Calendario" del Veterinario: todas sus
+    // propias atenciones (cada una es una cita en su fecha), más el
+    // seguimiento si tienen próxima fecha (o registros viejos sin
+    // veterinario asignado, para no ocultarlos).
     if (misCitas) {
-      filters.proxima_fecha = { [Op.ne]: null };
       filters[Op.or] = [{ iduser: req.user && req.user.iduser }, { iduser: null }];
-      order = [["proxima_fecha", "ASC"]];
+      order = [["fecha", "ASC"]];
     }
 
     const registros = await tblveterinaria.findAll({
