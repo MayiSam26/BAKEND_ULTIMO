@@ -216,6 +216,17 @@ exports.solicitarAdopcion = async (req, res, next) => {
       });
     }
 
+    // Perú: los números de contacto son de 9 dígitos. Este formulario es
+    // público, así que la validación del navegador no alcanza: cualquiera
+    // puede llamar al endpoint directamente.
+    if (!/^\d{9}$/.test(telefono)) {
+      return res.status(400).json({
+        code: '001',
+        message: 'El teléfono debe tener 9 dígitos numéricos.',
+        data: null,
+      });
+    }
+
     const animal = await tblColitas.findOne({ where: { idanimal } });
     if (!animal) {
       return res.status(404).json({ code: '001', message: 'La mascota no existe.', data: null });

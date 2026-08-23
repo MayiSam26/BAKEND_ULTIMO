@@ -21,6 +21,11 @@ exports.enviarConsultaDonacion = async (req, res) => {
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
             return res.status(400).json({ code: '001', message: 'Ingresa un correo electrónico válido.', data: null });
         }
+        // El teléfono es opcional, pero si viene debe ser un número de Perú
+        // (9 dígitos). Formulario público: no basta con validar en el navegador.
+        if (telefono && !/^\d{9}$/.test(telefono)) {
+            return res.status(400).json({ code: '001', message: 'El teléfono debe tener 9 dígitos numéricos.', data: null });
+        }
 
         if (!process.env.RESEND_API_KEY || !process.env.EMAIL_DESTINO) {
             console.error("Contacto de donación: faltan las variables de entorno RESEND_API_KEY/EMAIL_DESTINO");
