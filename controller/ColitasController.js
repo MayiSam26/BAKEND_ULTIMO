@@ -35,7 +35,7 @@ const upload = multer({
 
 exports.getColitas = async (req, res) => {
     try {
-        const { search, p_tamano, p_idtipoanimal, p_idgenero, fechaBusqueda, estado, limite } = req.body;
+        const { search, p_tamano, p_idtipoanimal, p_idgenero, fechaBusqueda, estado, estados, limite } = req.body;
 
         let filters = {};
 
@@ -67,6 +67,13 @@ exports.getColitas = async (req, res) => {
 
         if (estado) {
             filters.estado = estado;
+        }
+
+        // "estados" permite pedir varios a la vez (ej. las que siguen dentro
+        // del albergue: "En refugio" y "proceso"), sin tener que hacer una
+        // consulta por cada uno.
+        if (Array.isArray(estados) && estados.length > 0) {
+            filters.estado = { [Op.in]: estados };
         }
 
         // ✅ Consulta con o sin límite
