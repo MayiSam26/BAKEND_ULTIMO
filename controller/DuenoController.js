@@ -1,6 +1,7 @@
 const tbldueno = require("../Entity/dueno");
 const sequilize = require("../database/conection")
 const { Op } = require('sequelize');
+const tblperdidos = require("../Entity/Perdidos");
 
 exports.getDueno = async (req, res) => {
     try {
@@ -32,12 +33,23 @@ exports.getDueno = async (req, res) => {
 
 exports.createAmo = async(req, res, next) =>{
     try {
-        const {iduser,nombre,facebook,instagram} = req.body
+        const {iduser,nombre,facebook,instagram,whatsapp} = req.body
+
+        // Perú: 9 dígitos. Es opcional, pero si viene tiene que estar completo.
+        if (whatsapp && !/^\d{9}$/.test(whatsapp)) {
+            return res.json({
+                code: '001',
+                message: 'El WhatsApp debe tener 9 dígitos numéricos.',
+                data: null
+            });
+        }
+
         const amoMascotas = new tbldueno({
             iduser:iduser,
             nombre:nombre,
             facebook:facebook,
-            instagram:instagram
+            instagram:instagram,
+            whatsapp: whatsapp || null
         })
         await amoMascotas.save()
         const result ={
@@ -98,6 +110,14 @@ exports.updateApoderado = async(req, res, next) =>{
             }
             res.json(result); 
         }else{
+           if (req.body.whatsapp && !/^\d{9}$/.test(req.body.whatsapp)) {
+               return res.json({
+                   code: '001',
+                   message: 'El WhatsApp debe tener 9 dígitos numéricos.',
+                   data: null
+               });
+           }
+
            await tbldueno.update(req.body, { where: { iddueno: id } });
            const result ={
                 code :'000',
@@ -129,6 +149,17 @@ exports.deleteApoderado = async(req, res, next) =>{
             }
             res.json(result); 
         }else{
+           // RF05 pide que la mascota perdida muestre el contacto de su dueño:
+           // borrarlo dejaría el aviso publicado sin forma de ubicar a nadie.
+           const asociadas = await tblperdidos.count({ where: { iddueno: id } });
+           if (asociadas > 0) {
+               return res.json({
+                   code: '001',
+                   message: `No se puede eliminar: ${asociadas} mascota(s) perdida(s) tienen a esta persona como dueño. Elimina o reasigna esos registros primero.`,
+                   data: null
+               });
+           }
+
            await tbldueno.destroy({ where: { iddueno: id } });
            const result ={
                 code :'000',

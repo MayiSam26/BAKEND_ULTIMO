@@ -93,6 +93,16 @@ exports.getPerdidos = async (req, res) => {
 
 // RF05: pública, la usa el sitio web para mostrar mascotas perdidas reportadas
 // (foto + contacto del dueño), sin necesidad de sesión.
+// El WhatsApp del dueño NO se manda al sitio público: se reemplaza por una
+// bandera. Si se enviara el número, quedaría a la vista de cualquiera en la
+// respuesta del API aunque la página no lo escriba. Para escribirle se usa
+// /perdidos/whatsapp/:id, que redirige sin exponerlo.
+function ocultarWhatsapp(item) {
+    if (!item.dueno) return item;
+    const { whatsapp, ...duenoPublico } = item.dueno;
+    return { ...item, dueno: { ...duenoPublico, tieneWhatsapp: Boolean(whatsapp) } };
+}
+
 exports.getPerdidosPublicas = async (req, res) => {
     try {
         const perdidos = await tblmascotaperdida.findAll({
@@ -100,7 +110,7 @@ exports.getPerdidosPublicas = async (req, res) => {
             order: [["idmascotaperdida", "DESC"]],
         });
 
-        const data = await joinPerdidos(perdidos);
+        const data = (await joinPerdidos(perdidos)).map(ocultarWhatsapp);
 
         res.json({ code: "000", message: "success", data });
     } catch (error) {
@@ -252,5 +262,31 @@ exports.deletePerdidos = async (req, res) => {
     } catch (error) {
         console.error("Error en deletePerdidos:", error);
         res.status(500).json({ code: '001', message: 'Error en el servidor', data: null });
+    }
+};
+
+
+// Abre el chat de WhatsApp del dueño sin que el número pase nunca por el
+// sitio público: el navegador pide esta ruta y el servidor responde con la
+// redirección a wa.me.
+exports.contactarWhatsapp = async (req, res) => {
+    try {
+        const perdido = await tblmascotaperdida.findOne({
+            where: { idmascotaperdida: req.params.id, status: "P" },
+        });
+        if (!perdido) {
+            return res.status(404).send("Aviso de mascota perdida no encontrado.");
+        }
+
+        const dueno = await tbldueno.findOne({ where: { iddueno: perdido.iddueno } });
+        const numero = (dueno && dueno.whatsapp ? String(dueno.whatsapp) : "").replace(/\D/g, "");
+        if (!/^\d{9}$/.test(numero)) {
+            return res.status(404).send("Esta persona no registró un WhatsApp de contacto.");
+        }
+
+        res.redirect(302, `https://wa.me/51${numero}`);
+    } catch (error) {
+        console.error("Error en contactarWhatsapp:", error);
+        res.status(500).send("Error en el servidor");
     }
 };

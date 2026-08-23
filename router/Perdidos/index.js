@@ -6,6 +6,8 @@ const requirePermission = require("../../middleware/requirePermission")
 module.exports = () =>{
     // pública: la usa el sitio web para mostrar mascotas perdidas (RF05)
     router.get("/publicas",perdidosController.getPerdidosPublicas)
+    // pública: redirige al WhatsApp del dueño sin exponer su número
+    router.get("/whatsapp/:id",perdidosController.contactarWhatsapp)
 
     // protegidas: solo el panel admin
     router.post("/list",verifyToken,requirePermission("perdidos"),perdidosController.getPerdidos)

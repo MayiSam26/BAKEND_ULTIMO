@@ -25,6 +25,13 @@ const tbldueno = conexion.define('tbldueno', {
   instagram: {
     type: Sequelize.STRING,
     allowNull: false,
+  },
+  // Número de WhatsApp del dueño (9 dígitos, Perú). En el sitio público NO se
+  // muestra escrito: solo alimenta el botón "Escribir por WhatsApp", para no
+  // dejar el número a la vista de cualquiera que entre a la web.
+  whatsapp: {
+    type: Sequelize.STRING,
+    allowNull: true,
   }
 }, {
   tableName: 'tbldueno', 

@@ -128,7 +128,18 @@ exports.createAdopcion = async (req, res, next) => {
       Motivo,
       Fecha_Registro,
     } = req.body;
-    console.log("req.body;",req.body)
+    // Mismo criterio que en el formulario público: un DNI, una persona.
+    if (Dni) {
+      const repetido = await tbladoptante.findOne({ where: { Dni } });
+      if (repetido) {
+        return res.json({
+          code: "001",
+          message: `Ya existe un adoptante registrado con el DNI ${Dni}: ${repetido.Nombre} ${repetido.Apellido}.`,
+          data: null,
+        });
+      }
+    }
+
     const createAdoptante = new tbladoptante({
       iduser: iduser,
       Nombre: Nombre,
@@ -241,18 +252,30 @@ exports.solicitarAdopcion = async (req, res, next) => {
       });
     }
 
-    const nuevoAdoptante = await tbladoptante.create({
-      Nombre,
-      Apellido,
-      Dni,
-      Direccion,
-      telefono,
-      Motivo,
-      Fecha_Registro: moment().format('YYYY-MM-DD'),
-    });
+    // El DNI identifica a la persona: si ya postuló antes no se crea otra
+    // ficha, se reutiliza la suya y solo se registra la nueva solicitud. Sin
+    // esto quedaban dos "personas" distintas con el mismo documento cada vez
+    // que alguien se interesaba en una segunda colita.
+    let adoptante = await tbladoptante.findOne({ where: { Dni } });
+
+    if (adoptante) {
+      // Los datos de contacto sí se refrescan con lo último que escribió;
+      // el nombre y el DNI se dejan como estaban.
+      await adoptante.update({ Direccion, telefono, Motivo });
+    } else {
+      adoptante = await tbladoptante.create({
+        Nombre,
+        Apellido,
+        Dni,
+        Direccion,
+        telefono,
+        Motivo,
+        Fecha_Registro: moment().format('YYYY-MM-DD'),
+      });
+    }
 
     await tbladopcion.create({
-      idadoptante: nuevoAdoptante.idadoptante,
+      idadoptante: adoptante.idadoptante,
       idanimal,
       Fecha_Adopcion: new Date(),
       Observaciones: Motivo,

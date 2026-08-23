@@ -100,6 +100,21 @@ exports.updateAdoptante = async (req, res, next) => {
       res.json(result);
       next();
     } else {
+      // Un DNI, una persona: al editar no se puede pisar el documento de otro
+      // adoptante ya registrado.
+      if (req.body.Dni) {
+        const repetido = await tbladoptante.findOne({
+          where: { Dni: req.body.Dni, idadoptante: { [Op.ne]: id } },
+        });
+        if (repetido) {
+          return res.json({
+            code: "001",
+            message: `El DNI ${req.body.Dni} ya pertenece a ${repetido.Nombre} ${repetido.Apellido}.`,
+            data: null,
+          });
+        }
+      }
+
       await tbladoptante.update(req.body, {
         where: {
           idadoptante: id,
