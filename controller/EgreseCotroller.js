@@ -24,13 +24,20 @@ exports.findAllEgreso = async(req, res, next) =>{
 }
 exports.createEgreso = async(req, res, next) =>{
     try {
-      const{iduser,Descripcion,Monto,fechato} = req.body
+      const{Descripcion,Monto,fechato} = req.body
+      // El formulario mandaba iduser:0, que no existe en tbluser: la clave
+      // foránea rechazaba el INSERT y no se podía registrar ningún egreso.
+      // El dueño del registro es quien tiene la sesión abierta.
+      const iduser = req.user ? req.user.iduser : null
       console.log("iduser",iduser)
       const egresos = new tblregistroegreso({
         iduser:iduser,
         Descripcion:Descripcion,
         Monto:Monto,
-        fechato:fechato
+        fechato:fechato,
+        // Auditoría: la pone el servidor, no el formulario.
+        creado_en: new Date(),
+        creado_por: req.user ? req.user.iduser : null,
       })
       await egresos.save()
       const result ={
@@ -92,7 +99,15 @@ exports.updateEgreso = async(req, res, next) =>{
         res.json(result); 
         next()
         }else{
-            await tblregistroegreso.update(req.body,{
+            // Se copia lo que llega pero la huella de auditoría la escribe el
+            // servidor: el cliente no puede fabricar ni borrar quién editó.
+            const cambios = { ...req.body };
+            delete cambios.creado_en;
+            delete cambios.creado_por;
+            cambios.modificado_en = new Date();
+            cambios.modificado_por = req.user ? req.user.iduser : null;
+
+            await tblregistroegreso.update(cambios,{
                 where:{
                     idregistroegreso:id
                 }

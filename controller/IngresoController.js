@@ -147,6 +147,11 @@ exports.createIngreso = async (req, res, next) => {
         donacion: donacion,
         pago: pago,
         evidencia: imageUrl,
+        // Auditoría: la hora real del guardado y quién lo hizo salen del
+        // servidor y del token, nunca de lo que mande el formulario. Así la
+        // huella no se puede alterar aunque se cambie la fecha del registro.
+        creado_en: new Date(),
+        creado_por: req.user ? req.user.iduser : null,
       });
 
       await createIngreso.save();
