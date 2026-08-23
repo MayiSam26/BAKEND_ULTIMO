@@ -5,6 +5,7 @@ const sequilize = require("../database/conection");
 const moment = require("moment");
 const { Op } = require("sequelize");
 const { fn, col } = require("sequelize");
+const { cerrarApadrinamientosSiSalio } = require("../helpers/apadrinamiento");
 
 exports.getAdopciones = async (req, res, next) => {
   try {
@@ -178,6 +179,7 @@ exports.createAdopcionColitas = async (req, res, next) => {
         { estado: Estado}, 
         { where: { idanimal } }
       )
+    await cerrarApadrinamientosSiSalio(idanimal, Estado);
 
    
     const result = {
@@ -355,6 +357,8 @@ exports.updateAdopcion = async (req, res, next) => {
         { estado: estadoAnimal },
         { where: { idanimal: existe.idanimal } }
       );
+      // Adopción concretada: se cierran los apadrinamientos que la sostenían.
+      await cerrarApadrinamientosSiSalio(existe.idanimal, estadoAnimal);
 
       const result = {
         code: "000",
