@@ -6,6 +6,7 @@ const moment = require("moment");
 const multer = require("multer");
 const path = require("path");
 const { Op } = require("sequelize");
+const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -109,6 +110,7 @@ exports.createSeguimiento = async (req, res, next) => {
       tipo,
       Fecha_Programada,
       Estado: "pendiente",
+      ...sellarCreacion(req),
     });
 
     res.json({ code: "000", message: "Se programó correctamente", data: null });
@@ -159,7 +161,7 @@ exports.updateSeguimiento = async (req, res, next) => {
         (Estado || "").toLowerCase() === "realizado" ? Fecha_Realizado || moment().format("YYYY-MM-DD") : null;
       if (req.file) updates.Evidencia = req.file.path;
 
-      await tblseguimiento.update(updates, { where: { idseguimiento: id } });
+      await tblseguimiento.update(sellarModificacion(req, updates), { where: { idseguimiento: id } });
 
       res.json({ code: "000", message: "Se actualizó correctamente", data: null });
     });

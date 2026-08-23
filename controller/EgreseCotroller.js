@@ -1,5 +1,6 @@
 const tblregistroegreso = require("../Entity/Egreso");
 const sequilize = require("../database/conection")
+const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
 
 exports.findAllEgreso = async(req, res, next) =>{
     try {
@@ -35,9 +36,8 @@ exports.createEgreso = async(req, res, next) =>{
         Descripcion:Descripcion,
         Monto:Monto,
         fechato:fechato,
-        // Auditoría: la pone el servidor, no el formulario.
-        creado_en: new Date(),
-        creado_por: req.user ? req.user.iduser : null,
+        // Auditoría: la pone el servidor, no el formulario.,
+        ...sellarCreacion(req),
       })
       await egresos.save()
       const result ={
@@ -99,15 +99,9 @@ exports.updateEgreso = async(req, res, next) =>{
         res.json(result); 
         next()
         }else{
-            // Se copia lo que llega pero la huella de auditoría la escribe el
-            // servidor: el cliente no puede fabricar ni borrar quién editó.
-            const cambios = { ...req.body };
-            delete cambios.creado_en;
-            delete cambios.creado_por;
-            cambios.modificado_en = new Date();
-            cambios.modificado_por = req.user ? req.user.iduser : null;
-
-            await tblregistroegreso.update(cambios,{
+            // La huella la escribe el servidor: el cliente no puede fabricar
+            // ni borrar quién editó.
+            await tblregistroegreso.update(sellarModificacion(req, req.body),{
                 where:{
                     idregistroegreso:id
                 }

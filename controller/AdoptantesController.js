@@ -2,6 +2,7 @@ const tbladoptante = require("../Entity/Adoptantes");
 const sequilize = require("../database/conection");
 const moment = require("moment");
 const { Op } = require("sequelize");
+const { sellarModificacion } = require("../helpers/auditoria");
 
 exports.getAdoptantes = async (req, res, next) => {
   try {
@@ -115,7 +116,7 @@ exports.updateAdoptante = async (req, res, next) => {
         }
       }
 
-      await tbladoptante.update(req.body, {
+      await tbladoptante.update(sellarModificacion(req, req.body), {
         where: {
           idadoptante: id,
         },

@@ -1,5 +1,6 @@
 const { Sequelize } = require('sequelize');
 const conexion = require("../database/conection");
+const { COLUMNAS_AUDITORIA } = require("../helpers/auditoria");
 
 const tblnoticia = conexion.define('tblnoticia', {
   idnoticia: {
@@ -41,6 +42,8 @@ const tblnoticia = conexion.define('tblnoticia', {
     allowNull: false,
     defaultValue: Sequelize.NOW,
   },
+  // Huella de auditoría (quién creó/modificó y cuándo). Ver helpers/auditoria.
+  ...COLUMNAS_AUDITORIA,
 }, {
   tableName: 'tblnoticia',
 });

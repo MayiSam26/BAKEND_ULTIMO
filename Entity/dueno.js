@@ -2,6 +2,7 @@
 
 const { Sequelize } = require('sequelize');
 const conexion = require("../database/conection")
+const { COLUMNAS_AUDITORIA } = require("../helpers/auditoria");
  // Importa tu instancia de Sequelize
 
 const tbldueno = conexion.define('tbldueno', {
@@ -32,7 +33,9 @@ const tbldueno = conexion.define('tbldueno', {
   whatsapp: {
     type: Sequelize.STRING,
     allowNull: true,
-  }
+  },
+  // Huella de auditoría (quién creó/modificó y cuándo). Ver helpers/auditoria.
+  ...COLUMNAS_AUDITORIA,
 }, {
   tableName: 'tbldueno', 
   

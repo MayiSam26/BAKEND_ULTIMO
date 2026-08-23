@@ -1,5 +1,6 @@
 const sequilize = require("../database/conection");
 const tbldonantes = require("../Entity/Donante");
+const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
 exports.getDonante = async (req, res, next) => {
   try {
     await sequilize
@@ -33,6 +34,7 @@ exports.createDonante = async (req, res, next) => {
       Ruc: Ruc,
       Dni: Dni,
       Fecha_Registro: Fecha_Registro,
+      ...sellarCreacion(req),
     });
     await create.save();
     const result = {
@@ -86,7 +88,7 @@ exports.updateEgreso = async (req, res) => {
     }
 
     // Actualizar con los nuevos datos
-    await donante.update(nuevosDatos);
+    await donante.update(sellarModificacion(req, nuevosDatos));
 
     res.status(200).json({
       code: "000",

@@ -6,6 +6,7 @@ const tblingreso = require("../Entity/Ingresos");
 const tbldonante = require("../Entity/Donante");
 const { fn, col } = require("sequelize");
 const { Op } = require("sequelize");
+const { sellarCreacion } = require("../helpers/auditoria");
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -149,9 +150,8 @@ exports.createIngreso = async (req, res, next) => {
         evidencia: imageUrl,
         // Auditoría: la hora real del guardado y quién lo hizo salen del
         // servidor y del token, nunca de lo que mande el formulario. Así la
-        // huella no se puede alterar aunque se cambie la fecha del registro.
-        creado_en: new Date(),
-        creado_por: req.user ? req.user.iduser : null,
+        // huella no se puede alterar aunque se cambie la fecha del registro.,
+        ...sellarCreacion(req),
       });
 
       await createIngreso.save();

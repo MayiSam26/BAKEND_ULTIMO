@@ -1,6 +1,7 @@
 const tblapadrinado = require("../Entity/Apadrinado");
 const tblanimal = require("../Entity/Colitas");
 const { Op } = require("sequelize");
+const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
 
 async function joinApadrinados(apadrinados) {
     const idsAnimal = apadrinados.map(item => item.idanimal);
@@ -90,6 +91,7 @@ exports.createApadrinado = async (req, res) => {
             monto: monto || null,
             fecha_registro,
             estado: estado || 'Activo',
+            ...sellarCreacion(req),
         });
 
         await nuevo.save();
@@ -128,7 +130,7 @@ exports.updateApadrinado = async (req, res) => {
         if (fecha_registro) updates.fecha_registro = fecha_registro;
         if (estado) updates.estado = estado;
 
-        await tblapadrinado.update(updates, { where: { idapadrinado: id } });
+        await tblapadrinado.update(sellarModificacion(req, updates), { where: { idapadrinado: id } });
 
         res.json({ code: '000', message: 'Se actualizó correctamente', data: null });
     } catch (error) {

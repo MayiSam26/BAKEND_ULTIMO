@@ -2,6 +2,7 @@ const tblnoticia = require("../Entity/Noticia");
 const multer = require("multer");
 const path = require("path");
 const { Op } = require("sequelize");
+const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -85,6 +86,7 @@ exports.createNoticia = async (req, res, next) => {
         imagen: req.file ? req.file.path : null,
         Estado: estado,
         fecha_publicacion: estado === "Publicado" ? fecha_publicacion || new Date() : fecha_publicacion || null,
+        ...sellarCreacion(req),
       });
 
       res.json({ code: "000", message: "Se creó correctamente", data: null });
@@ -125,7 +127,7 @@ exports.updateNoticia = async (req, res, next) => {
       };
       if (req.file) updates.imagen = req.file.path;
 
-      await tblnoticia.update(updates, { where: { idnoticia: id } });
+      await tblnoticia.update(sellarModificacion(req, updates), { where: { idnoticia: id } });
 
       res.json({ code: "000", message: "Se actualizó correctamente", data: null });
     });

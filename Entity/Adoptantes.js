@@ -1,6 +1,7 @@
 
 const { Sequelize } = require('sequelize');
 const conexion = require("../database/conection")
+const { COLUMNAS_AUDITORIA } = require("../helpers/auditoria");
  // Importa tu instancia de Sequelize
 
 const tbladoptante = conexion.define('tbladoptante', {
@@ -40,7 +41,9 @@ const tbladoptante = conexion.define('tbladoptante', {
   Fecha_Registro: {
     type: Sequelize.DATEONLY,
     allowNull: false,
-  }
+  },
+  // Huella de auditoría (quién creó/modificó y cuándo). Ver helpers/auditoria.
+  ...COLUMNAS_AUDITORIA,
 }, {
   tableName: 'tbladoptante', 
   

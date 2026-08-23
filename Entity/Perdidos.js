@@ -1,5 +1,6 @@
 const { Sequelize } = require('sequelize');
 const conexion = require("../database/conection")
+const { COLUMNAS_AUDITORIA } = require("../helpers/auditoria");
 
 // Los tipos y el mapeo de "foto" -> columna real "img" reflejan el esquema
 // verificado en la BD de Railway (SHOW COLUMNS), que no coincidía con la
@@ -56,7 +57,9 @@ const tblmascotaperdida = conexion.define('tblmascotaperdida', {
     type: Sequelize.STRING,
     allowNull: true,
     defaultValue: 'P',
-  }
+  },
+  // Huella de auditoría (quién creó/modificó y cuándo). Ver helpers/auditoria.
+  ...COLUMNAS_AUDITORIA,
 }, {
   tableName: 'tblmascotaperdida',
 

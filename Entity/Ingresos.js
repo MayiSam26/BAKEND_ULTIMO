@@ -2,6 +2,7 @@
 
 const { Sequelize } = require('sequelize');
 const conexion = require("../database/conection")
+const { COLUMNAS_AUDITORIA } = require("../helpers/auditoria");
  // Importa tu instancia de Sequelize
 
 const tblingreso = conexion.define('tblingreso', {
@@ -38,17 +39,8 @@ const tblingreso = conexion.define('tblingreso', {
     type: Sequelize.TEXT,
     allowNull: false,
   },
-  // Auditoría: los pone el servidor al guardar, nunca el formulario. Sirven
-  // para saber cuándo se registró de verdad (la fecha del formulario se puede
-  // cambiar) y quién lo hizo.
-  creado_en: {
-    type: Sequelize.DATE,
-    allowNull: true,
-  },
-  creado_por: {
-    type: Sequelize.INTEGER,
-    allowNull: true,
-  },
+  // Huella de auditoría (quién creó/modificó y cuándo). Ver helpers/auditoria.
+  ...COLUMNAS_AUDITORIA,
 }, {
   tableName: 'tblingreso', 
   

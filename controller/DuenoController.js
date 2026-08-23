@@ -2,6 +2,7 @@ const tbldueno = require("../Entity/dueno");
 const sequilize = require("../database/conection")
 const { Op } = require('sequelize');
 const tblperdidos = require("../Entity/Perdidos");
+const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
 
 exports.getDueno = async (req, res) => {
     try {
@@ -49,7 +50,8 @@ exports.createAmo = async(req, res, next) =>{
             nombre:nombre,
             facebook:facebook,
             instagram:instagram,
-            whatsapp: whatsapp || null
+            whatsapp: whatsapp || null,
+            ...sellarCreacion(req),
         })
         await amoMascotas.save()
         const result ={
@@ -118,7 +120,7 @@ exports.updateApoderado = async(req, res, next) =>{
                });
            }
 
-           await tbldueno.update(req.body, { where: { iddueno: id } });
+           await tbldueno.update(sellarModificacion(req, req.body), { where: { iddueno: id } });
            const result ={
                 code :'000',
                 message:'Se actulizo correctamente',

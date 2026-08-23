@@ -2,6 +2,7 @@ const tblveterinaria = require("../Entity/Veterinaria");
 const tblanimal = require("../Entity/Colitas");
 const moment = require("moment");
 const { Op } = require("sequelize");
+const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
 
 exports.getRegistros = async (req, res, next) => {
   try {
@@ -126,6 +127,7 @@ exports.createRegistro = async (req, res, next) => {
       fecha,
       proxima_fecha: proxima_fecha || null,
       observaciones: observaciones || null,
+      ...sellarCreacion(req),
     });
 
     res.json({ code: "000", message: "Se registró correctamente", data: null });
@@ -158,7 +160,7 @@ exports.updateRegistro = async (req, res, next) => {
     const updates = { tipo, descripcion, fecha, proxima_fecha: proxima_fecha || null, observaciones: observaciones || null };
     if (Estado === "Pendiente" || Estado === "Realizado") updates.Estado = Estado;
 
-    await tblveterinaria.update(updates, { where: { idveterinaria: id } });
+    await tblveterinaria.update(sellarModificacion(req, updates), { where: { idveterinaria: id } });
 
     res.json({ code: "000", message: "Se actualizó correctamente", data: null });
   } catch (error) {
@@ -180,7 +182,7 @@ exports.setEstado = async (req, res, next) => {
     if (!existe) {
       return res.json({ code: "001", message: "No existe el registro", data: null });
     }
-    await tblveterinaria.update({ Estado }, { where: { idveterinaria: id } });
+    await tblveterinaria.update(sellarModificacion(req, { Estado }), { where: { idveterinaria: id } });
     res.json({ code: "000", message: "Se actualizó correctamente", data: null });
   } catch (error) {
     console.error("Error en setEstado veterinaria:", error);

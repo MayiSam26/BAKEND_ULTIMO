@@ -8,6 +8,7 @@ const path = require('path');
 const { Op } = require("sequelize");
 const tbltipoanimal = require("../Entity/TipoAnimal");
 const { cerrarApadrinamientosSiSalio } = require("../helpers/apadrinamiento");
+const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -158,7 +159,8 @@ exports.createColitas = async (req, res, next) => {
                 observaciones:observaciones,
                 esterelizacion:esterelizacion,
                 Fecha_Ingreso: Fecha_Ingreso,
-                fechaRegistro:fechaRegistro
+                fechaRegistro:fechaRegistro,
+                ...sellarCreacion(req),
             });
 
             await createAnimal.save();
@@ -253,7 +255,7 @@ exports.updateColitas = async (req, res, next) => {
             if (estado) updates.estado = estado;
 
             try {
-                await tblanimal.update(updates, { where: { idanimal: id } });
+                await tblanimal.update(sellarModificacion(req, updates), { where: { idanimal: id } });
                 // Si la mascota deja el albergue, sus apadrinamientos activos
                 // ya no corresponden: se cierran solos.
                 if (estado) await cerrarApadrinamientosSiSalio(id, estado);

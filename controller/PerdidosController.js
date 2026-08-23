@@ -6,6 +6,7 @@ const moment = require("moment");
 const multer = require("multer");
 const path = require("path");
 const { Op } = require("sequelize");
+const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -193,6 +194,7 @@ exports.createPerdidos = async (req, res) => {
                 status: status || 'P',
                 Observaciones,
                 Fecha_Extravio,
+                ...sellarCreacion(req),
             });
 
             await nuevo.save();
@@ -237,7 +239,7 @@ exports.updatePerdidos = async (req, res) => {
             if (Fecha_Extravio) updates.Fecha_Extravio = Fecha_Extravio;
             if (req.file) updates.foto = req.file.path;
 
-            await tblmascotaperdida.update(updates, { where: { idmascotaperdida: id } });
+            await tblmascotaperdida.update(sellarModificacion(req, updates), { where: { idmascotaperdida: id } });
 
             res.json({ code: '000', message: 'Se actualizó correctamente', data: null });
         });

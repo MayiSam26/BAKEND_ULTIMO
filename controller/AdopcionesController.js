@@ -6,6 +6,7 @@ const moment = require("moment");
 const { Op } = require("sequelize");
 const { fn, col } = require("sequelize");
 const { cerrarApadrinamientosSiSalio } = require("../helpers/apadrinamiento");
+const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
 
 exports.getAdopciones = async (req, res, next) => {
   try {
@@ -149,6 +150,7 @@ exports.createAdopcion = async (req, res, next) => {
       telefono: telefono,
       Motivo: Motivo,
       Fecha_Registro,
+      ...sellarCreacion(req),
     });
     await createAdoptante.save();
     const result = {
@@ -183,11 +185,12 @@ exports.createAdopcionColitas = async (req, res, next) => {
       Observaciones: Observaciones,
       Estado: Estado,
       fecharegistro: fecharegistro,
+      ...sellarCreacion(req),
     });
 
     await createAdopcion.save();
     await tblColitas.update(
-        { estado: Estado}, 
+        sellarModificacion(req, { estado: Estado }),
         { where: { idanimal } }
       )
     await cerrarApadrinamientosSiSalio(idanimal, Estado);
@@ -261,7 +264,7 @@ exports.solicitarAdopcion = async (req, res, next) => {
     if (adoptante) {
       // Los datos de contacto sí se refrescan con lo último que escribió;
       // el nombre y el DNI se dejan como estaban.
-      await adoptante.update({ Direccion, telefono, Motivo });
+      await adoptante.update(sellarModificacion(req, { Direccion, telefono, Motivo }));
     } else {
       adoptante = await tbladoptante.create({
         Nombre,
@@ -271,6 +274,7 @@ exports.solicitarAdopcion = async (req, res, next) => {
         telefono,
         Motivo,
         Fecha_Registro: moment().format('YYYY-MM-DD'),
+        ...sellarCreacion(req),
       });
     }
 
@@ -281,9 +285,10 @@ exports.solicitarAdopcion = async (req, res, next) => {
       Observaciones: Motivo,
       Estado: 'proceso',
       fecharegistro: new Date(),
+      ...sellarCreacion(req),
     });
 
-    await tblColitas.update({ estado: 'proceso' }, { where: { idanimal } });
+    await tblColitas.update(sellarModificacion(req, { estado: 'proceso' }), { where: { idanimal } });
 
     res.json({
       code: '000',
@@ -366,7 +371,7 @@ exports.updateAdopcion = async (req, res, next) => {
         body.MotivoRechazo = null;
       }
 
-      await tbladopcion.update(body, {
+      await tbladopcion.update(sellarModificacion(req, body), {
         where: {
           idadopcion: id,
         },
@@ -377,7 +382,7 @@ exports.updateAdopcion = async (req, res, next) => {
       // tal cual en Colitas.
       const estadoAnimal = nuevoEstado === "rechazado" ? "En refugio" : req.body.Estado;
       await tblColitas.update(
-        { estado: estadoAnimal },
+        sellarModificacion(req, { estado: estadoAnimal }),
         { where: { idanimal: existe.idanimal } }
       );
       // Adopción concretada: se cierran los apadrinamientos que la sostenían.

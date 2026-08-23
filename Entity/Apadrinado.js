@@ -1,5 +1,6 @@
 const { Sequelize } = require('sequelize');
 const conexion = require("../database/conection")
+const { COLUMNAS_AUDITORIA } = require("../helpers/auditoria");
 
 const tblapadrinado = conexion.define('tblapadrinado', {
   idapadrinado: {
@@ -37,6 +38,8 @@ const tblapadrinado = conexion.define('tblapadrinado', {
     allowNull: false,
     defaultValue: 'Activo',
   },
+  // Huella de auditoría (quién creó/modificó y cuándo). Ver helpers/auditoria.
+  ...COLUMNAS_AUDITORIA,
 }, {
   tableName: 'tblapadrinado',
 });

@@ -2,6 +2,7 @@ const tblvoluntariovisita = require("../Entity/VoluntarioVisita");
 const tblUser = require("../Entity/User");
 const moment = require("moment");
 const { Op } = require("sequelize");
+const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
 
 exports.getVisitas = async (req, res, next) => {
   try {
@@ -76,6 +77,7 @@ exports.createVisita = async (req, res, next) => {
       iduser,
       fecha,
       nota: nota || null,
+      ...sellarCreacion(req),
     });
 
     res.json({ code: "000", message: "Se registró correctamente", data: null });
@@ -104,7 +106,7 @@ exports.updateVisita = async (req, res, next) => {
     const updates = { fecha, nota: nota || null };
     if (Estado === "Pendiente" || Estado === "Realizado") updates.Estado = Estado;
 
-    await tblvoluntariovisita.update(updates, { where: { idvisita: id } });
+    await tblvoluntariovisita.update(sellarModificacion(req, updates), { where: { idvisita: id } });
 
     res.json({ code: "000", message: "Se actualizó correctamente", data: null });
   } catch (error) {

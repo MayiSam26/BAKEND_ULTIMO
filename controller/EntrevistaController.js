@@ -4,6 +4,7 @@ const tbladoptante = require("../Entity/Adoptantes");
 const tblColitas = require("../Entity/Colitas");
 const moment = require("moment");
 const { Op } = require("sequelize");
+const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
 
 exports.getEntrevistas = async (req, res, next) => {
   try {
@@ -86,6 +87,7 @@ exports.createEntrevista = async (req, res, next) => {
       Fecha_Entrevista,
       Hora_Entrevista: Hora_Entrevista || null,
       Estado: "pendiente",
+      ...sellarCreacion(req),
     });
 
     res.json({ code: "000", message: "Se programó correctamente", data: null });
@@ -128,12 +130,12 @@ exports.updateEntrevista = async (req, res, next) => {
     }
 
     await tblentrevista.update(
-      {
+      sellarModificacion(req, {
         Estado: "realizada",
         Respuestas: Respuestas || null,
         Observaciones,
         Cumple_Requisitos,
-      },
+      }),
       { where: { identrevista: id } }
     );
 
