@@ -5,10 +5,21 @@ const { Op } = require("sequelize");
 
 exports.getRegistros = async (req, res, next) => {
   try {
-    const { search, tipo, idanimal, misCitas } = req.body || {};
+    const { search, tipo, idanimal, misCitas, desde, hasta } = req.body || {};
     const filters = {};
     if (tipo) filters.tipo = tipo;
     if (idanimal) filters.idanimal = idanimal;
+
+    // RF08: consulta de las citas realizadas por rango de fechas. Los dos
+    // extremos son independientes: se puede filtrar solo "desde", solo
+    // "hasta", o ambos. Se ignoran fechas con formato inválido.
+    const desdeOk = desde && moment(desde, "YYYY-MM-DD", true).isValid();
+    const hastaOk = hasta && moment(hasta, "YYYY-MM-DD", true).isValid();
+    if (desdeOk || hastaOk) {
+      filters.fecha = {};
+      if (desdeOk) filters.fecha[Op.gte] = desde;
+      if (hastaOk) filters.fecha[Op.lte] = hasta;
+    }
 
     let order = [["fecha", "DESC"]];
     // Usado por el calendario de "Mi Calendario" del Veterinario: todas sus
