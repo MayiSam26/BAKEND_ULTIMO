@@ -9,6 +9,7 @@ const { Op } = require("sequelize");
 const tbltipoanimal = require("../Entity/TipoAnimal");
 const { cerrarApadrinamientosSiSalio } = require("../helpers/apadrinamiento");
 const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
+const { conEdad, nacimientoDesdeEstimacion } = require("../helpers/edad");
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -105,11 +106,13 @@ exports.getColitas = async (req, res) => {
         const data = animales.map(animal => {
             const tipo = tiposAnimalesLimpios.find(t => t.idtipoanimal === animal.idtipoanimal);
             const genero = tiposGeneroLimpios.find(t => t.idgenero === animal.idgenero);
-            return {
+            // La edad se calcula al vuelo desde la fecha de nacimiento, no se
+            // lee de una columna: así nunca queda desactualizada.
+            return conEdad({
                 ...animal.get(),
                 tipo_descripcion: tipo ?? null,
                 genero: genero ?? null
-            };
+            });
         });
 
         res.json({
@@ -125,6 +128,37 @@ exports.getColitas = async (req, res) => {
 };
 
 
+
+// Estados de los que sale un animal del albergue por una via que no es la
+// adopcion. Marcar uno de estos sin decir por que deja un hueco en la
+// trazabilidad, asi que el motivo es obligatorio.
+const ESTADOS_CON_MOTIVO = ["De baja", "Fallecido"];
+
+/** Devuelve un mensaje de error si el estado exige motivo y no lo trae. */
+function validarMotivo(estado, motivo) {
+    if (!estado || !ESTADOS_CON_MOTIVO.includes(estado)) return null;
+    if (!motivo || !String(motivo).trim()) {
+        return `Para marcar la mascota como "${estado}" hay que indicar el motivo.`;
+    }
+    return null;
+}
+
+/**
+ * Resuelve la fecha de nacimiento a guardar a partir de lo que mande el
+ * formulario: o la fecha exacta, o la que implica la edad estimada al
+ * ingresar. Devuelve {fecha_nacimiento, nacimiento_exacto} o null si no hay
+ * datos suficientes.
+ */
+function resolverNacimiento(body, fechaIngreso) {
+    const { fecha_nacimiento, Edada_Aprox } = body;
+    if (fecha_nacimiento && moment(fecha_nacimiento, "YYYY-MM-DD", true).isValid()) {
+        if (moment(fecha_nacimiento).isAfter(moment())) return { error: "La fecha de nacimiento no puede ser futura." };
+        return { fecha_nacimiento, nacimiento_exacto: true };
+    }
+    const deducida = nacimientoDesdeEstimacion(Edada_Aprox, fechaIngreso || new Date());
+    if (deducida) return { fecha_nacimiento: deducida, nacimiento_exacto: false };
+    return null;
+}
 
 exports.createColitas = async (req, res, next) => {
     try {
@@ -146,6 +180,15 @@ exports.createColitas = async (req, res, next) => {
 
             const imageUrl = req.file.path;
             const { nombre, idtipoanimal,idadopcion, idgenero, tamano, peso, Edada_Aprox, foto, observaciones, estado, esterelizacion, Fecha_Ingreso,fechaRegistro} = req.body;
+            const errMotivo = validarMotivo(estado, req.body.motivo_estado);
+            if (errMotivo) {
+                return res.status(400).json({ code: '001', message: errMotivo, data: null });
+            }
+            const nacimiento = resolverNacimiento(req.body, Fecha_Ingreso);
+            if (nacimiento && nacimiento.error) {
+                return res.status(400).json({ code: '001', message: nacimiento.error, data: null });
+            }
+
             const createAnimal = new tblanimal({
                 nombre: nombre,
                 idadopcion:idadopcion==""?null:null,
@@ -160,6 +203,8 @@ exports.createColitas = async (req, res, next) => {
                 esterelizacion:esterelizacion,
                 Fecha_Ingreso: Fecha_Ingreso,
                 fechaRegistro:fechaRegistro,
+                motivo_estado: req.body.motivo_estado || null,
+                ...(nacimiento && !nacimiento.error ? nacimiento : {}),
                 ...sellarCreacion(req),
             });
 
@@ -205,7 +250,7 @@ exports.findByIcolitas =  async (req, res, next) => {
             const result ={
                 code :'000',
                 message:'success',
-                data:colitas
+                data: colitas ? conEdad(colitas.get()) : null
             }
             res.json(result); 
         }
@@ -253,6 +298,62 @@ exports.updateColitas = async (req, res, next) => {
             if (observaciones) updates.observaciones = observaciones;
             if (imgUrl) updates.foto = imgUrl;
             if (estado) updates.estado = estado;
+
+            // Antes solo se podian cambiar foto, estado, esterilizacion y
+            // observaciones: un nombre mal escrito quedaba mal para siempre.
+            // Ahora se puede corregir la ficha entera, y como cada cambio
+            // queda sellado con quien y cuando, la correccion es trazable.
+            const editables = ["nombre", "idtipoanimal", "idgenero", "tamano", "peso"];
+            editables.forEach((campo) => {
+                if (req.body[campo] !== undefined && String(req.body[campo]).trim() !== "") {
+                    updates[campo] = req.body[campo];
+                }
+            });
+
+            const { Fecha_Ingreso } = req.body;
+            if (Fecha_Ingreso) {
+                if (!moment(Fecha_Ingreso, "YYYY-MM-DD", true).isValid()) {
+                    return res.status(400).json({ code: '001', message: 'Fecha de ingreso invalida.', data: null });
+                }
+                if (moment(Fecha_Ingreso).isAfter(moment())) {
+                    return res.status(400).json({ code: '001', message: 'La fecha de ingreso no puede ser futura.', data: null });
+                }
+                updates.Fecha_Ingreso = Fecha_Ingreso;
+            }
+
+            // El motivo es obligatorio al pasar a un estado de salida. Se
+            // valida contra el estado que va a quedar, no solo contra el que
+            // llega en el formulario.
+            const estadoFinal = estado || plan.estado;
+            const motivoFinal = req.body.motivo_estado !== undefined
+                ? req.body.motivo_estado
+                : plan.motivo_estado;
+            const errMotivo = validarMotivo(estadoFinal, motivoFinal);
+            if (errMotivo) {
+                return res.status(400).json({ code: '001', message: errMotivo, data: null });
+            }
+            if (req.body.motivo_estado !== undefined) {
+                updates.motivo_estado = req.body.motivo_estado || null;
+            }
+
+            // Nacimiento: fecha exacta si la mandan, o la que implica la edad
+            // estimada. Solo se toca si el formulario envio alguno de los dos.
+            if (req.body.fecha_nacimiento !== undefined || req.body.Edada_Aprox !== undefined) {
+                const nacimiento = resolverNacimiento(
+                    req.body,
+                    Fecha_Ingreso || plan.Fecha_Ingreso
+                );
+                if (nacimiento && nacimiento.error) {
+                    return res.status(400).json({ code: '001', message: nacimiento.error, data: null });
+                }
+                if (nacimiento) {
+                    updates.fecha_nacimiento = nacimiento.fecha_nacimiento;
+                    updates.nacimiento_exacto = nacimiento.nacimiento_exacto;
+                }
+                if (req.body.Edada_Aprox !== undefined && String(req.body.Edada_Aprox).trim() !== "") {
+                    updates.Edada_Aprox = req.body.Edada_Aprox;
+                }
+            }
 
             try {
                 await tblanimal.update(sellarModificacion(req, updates), { where: { idanimal: id } });

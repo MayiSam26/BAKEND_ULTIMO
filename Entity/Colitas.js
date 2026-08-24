@@ -34,9 +34,24 @@ const tblanimal = conexion.define('tblanimal', {
     type: Sequelize.STRING,
     allowNull: false,
   },
+  // Edad estimada al momento de ingresar, en años. Se conserva como registro
+  // histórico de lo que se declaró; la edad que se MUESTRA se calcula a partir
+  // de fecha_nacimiento (ver helpers/edad).
   Edada_Aprox: {
     type: Sequelize.STRING,
     allowNull: false,
+  },
+  // Fecha de nacimiento. Si no se conoce la exacta, se guarda la que implica
+  // la edad estimada al ingresar y nacimiento_exacto queda en false, para
+  // poder mostrar la edad como aproximada.
+  fecha_nacimiento: {
+    type: Sequelize.DATEONLY,
+    allowNull: true,
+  },
+  nacimiento_exacto: {
+    type: Sequelize.BOOLEAN,
+    allowNull: true,
+    defaultValue: false,
   },
   foto: {
     type: Sequelize.TEXT,
@@ -48,6 +63,13 @@ const tblanimal = conexion.define('tblanimal', {
   },
   estado: {
     type: Sequelize.STRING,
+    allowNull: true,
+  },
+  // Por qué el animal quedó en el estado actual. Obligatorio cuando sale del
+  // albergue por una vía que no es la adopción ("De baja", "Fallecido"), para
+  // que la salida quede explicada y no solo registrada.
+  motivo_estado: {
+    type: Sequelize.TEXT,
     allowNull: true,
   },
   esterelizacion: {
