@@ -105,6 +105,12 @@ const MODULOS = [
     fechaDeclarada: "Fecha_Entrevista",
   },
   {
+    clave: "Canales de donación",
+    modelo: require("../Entity/Plan"),
+    id: "idplanmensual",
+    describir: (r) => r.nombre || "Canal sin nombre",
+  },
+  {
     clave: "Voluntariado",
     modelo: require("../Entity/VoluntarioVisita"),
     id: "idvisita",

@@ -2,6 +2,7 @@ const tblplanmensual = require("../Entity/Plan");
 const sequilize = require("../database/conection")
 const multer = require('multer');
 const path = require('path');
+const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
       cb(null, 'uploads/');
@@ -28,10 +29,21 @@ exports.getPlanMensual = async(req, res) =>{
     try {
         await sequilize.query('CALL sp_getPlanMensual()', { type: sequilize.QueryTypes.RAW })
         .then(results => {
+            // Este endpoint es público (lo consume la portada). El
+            // procedimiento hace SELECT *, así que se recortan las columnas de
+            // auditoría antes de responder: quién editó un canal de pago y
+            // cuándo no tiene por qué verlo cualquiera desde internet.
+            const publico = (results || []).map((fila) => ({
+                idplanmensual: fila.idplanmensual,
+                img: fila.img,
+                nombre: fila.nombre,
+                content: fila.content,
+                cantidad: fila.cantidad,
+            }));
             const result ={
                 code :'000',
                 message:'success',
-                data:results
+                data:publico
             }
             res.json(result); 
         })
@@ -56,24 +68,26 @@ exports.createPlanMensual = async (req, res, next) => {
             data: null
           });
         }
-        if (!req.file) {
+        const { content, nombre, cantidad } = req.body;
+
+        // El canal necesita nombre y logo (cantidad guarda la URL del logo);
+        // el archivo adjunto es opcional porque el sitio público no lo usa.
+        if (!nombre || !cantidad) {
           return res.status(400).json({
             code: '001',
-            message: 'No se ha subido ninguna imagen',
+            message: 'El canal y la URL del logo son obligatorios',
             data: null
           });
         }
-  
-        const imageUrl = req.file.path;
-        const { iduser, content, nombre, cantidad, img } = req.body;
+
         const planMensual = new tblplanmensual({
-          iduser: iduser,
           nombre: nombre,
           content: content,
-          img: imageUrl,
-          cantidad: cantidad
+          img: req.file ? req.file.path : '',
+          cantidad: cantidad,
+          ...sellarCreacion(req)
         });
-  
+
         await planMensual.save();
         const resultado = {
           code: '000',
@@ -120,23 +134,21 @@ exports.updatePlanMensual = async (req, res, next) => {
             }
 
             const { nombre, content, cantidad } = req.body;
-            let imgUrl = ''; 
 
-            if (req.file) {
-                imgUrl = req.file.path; 
-                await tblplanmensual.update({ img:imgUrl }, {
-                    where: {
-                        idplanmensual: id
-                    }
-                });
-            }
-            
-            await tblplanmensual.update({ nombre, content, cantidad }, {
+            // Se arma el cambio solo con lo que realmente vino: así subir un
+            // logo nuevo no borra el nombre ni los datos de la cuenta, que es
+            // lo que pasaba cuando el formulario mandaba el archivo solo.
+            const cambios = {};
+            if (nombre !== undefined) cambios.nombre = nombre;
+            if (content !== undefined) cambios.content = content;
+            if (cantidad !== undefined) cambios.cantidad = cantidad;
+            if (req.file) cambios.img = req.file.path;
+
+            await tblplanmensual.update(sellarModificacion(req, cambios), {
                 where: {
                     idplanmensual: id
                 }
             });
-            console.log("imgUrl",imgUrl)
             const result = {
                 code: '000',
                 message: 'Se actualizó correctamente',
