@@ -15,6 +15,9 @@ module.exports = () => {
     // Asignar/editar/eliminar visitas es solo del Administrador.
     router.post("/create", requireRole("Administrador"), VoluntarioVisitaController.createVisita)
     router.put("/update/:id", requireRole("Administrador"), VoluntarioVisitaController.updateVisita)
+    // Marcar como realizada: el Administrador cualquiera, el voluntario solo
+    // las suyas (lo verifica el controller).
+    router.put("/estado/:id", VoluntarioVisitaController.setEstado)
     router.delete("/delete/:id", requireRole("Administrador"), VoluntarioVisitaController.deleteVisita)
     return router
 }

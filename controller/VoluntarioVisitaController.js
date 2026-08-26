@@ -115,6 +115,37 @@ exports.updateVisita = async (req, res, next) => {
   }
 };
 
+// Marcar una visita como realizada (o volverla a pendiente) sin abrir el
+// formulario completo, igual que el atajo de estado de Veterinaria. El
+// Administrador puede marcar cualquiera; un voluntario, solo las suyas, que
+// es justamente quien sabe si la visita ocurrio.
+exports.setEstado = async (req, res, next) => {
+  try {
+    const id = req.params.id;
+    const { Estado } = req.body;
+    if (Estado !== "Pendiente" && Estado !== "Realizado") {
+      return res.status(400).json({ code: "001", message: "Estado invalido.", data: null });
+    }
+    const existe = await tblvoluntariovisita.findOne({ where: { idvisita: id } });
+    if (!existe) {
+      return res.json({ code: "001", message: "No existe el registro", data: null });
+    }
+    const rol = req.user && req.user.rol;
+    if (rol && rol !== "Administrador" && existe.iduser !== req.user.iduser) {
+      return res.status(403).json({
+        code: "001",
+        message: "Solo puedes cambiar el estado de tus propias visitas.",
+        data: null,
+      });
+    }
+    await tblvoluntariovisita.update(sellarModificacion(req, { Estado }), { where: { idvisita: id } });
+    res.json({ code: "000", message: "Se actualizo correctamente", data: null });
+  } catch (error) {
+    console.error("Error en setEstado voluntariado:", error);
+    res.status(500).json({ "Error server": error });
+  }
+};
+
 exports.deleteVisita = async (req, res, next) => {
   try {
     const id = req.params.id;

@@ -13,6 +13,7 @@ const SECCIONES_CONFIGURABLES = [
     "veterinaria",
     "adopcion",
     "donaciones",
+    "voluntariado",
     "reportes",
 ];
 
