@@ -39,9 +39,10 @@ module.exports = () =>{
     //upload Img
     router.post("/upload/file",verifyToken,UploadController.saveFile)
 
-    //auditoria
-    router.post("/auditoria",verifyToken,AuditoriaController.createAuditoria)
-    router.put("/auditoria/update/:id",verifyToken,AuditoriaController.updateAuditoria)
+    //auditoria: cronometro del indicador "Tiempo de Registro"
+    router.post("/auditoria",verifyToken,AuditoriaController.iniciarMedicion)
+    router.put("/auditoria/update/:id",verifyToken,AuditoriaController.finalizarMedicion)
+    router.post("/auditoria/reporte",verifyToken,requirePermission("reportes"),AuditoriaController.getReporteTiempos)
 
 
     return router
