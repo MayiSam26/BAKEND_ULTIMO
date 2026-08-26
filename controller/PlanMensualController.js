@@ -3,6 +3,23 @@ const sequilize = require("../database/conection")
 const multer = require('multer');
 const path = require('path');
 const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
+
+/**
+ * La columna "content" es de tipo JSON: tiene que guardarse como arreglo, no
+ * como texto. El formulario del panel manda JSON.stringify(...), y si eso se
+ * guarda tal cual, Sequelize lo almacena como una cadena; el sitio publico
+ * hace content.map(...) sobre ella, revienta y la portada queda en blanco.
+ * Aca se normaliza para que siempre entre como arreglo.
+ */
+function normalizarContent(valor) {
+    if (valor === undefined || valor === null) return valor;
+    let v = valor;
+    // Puede llegar doblemente codificado, asi que se desenvuelve hasta el fondo.
+    for (let i = 0; i < 3 && typeof v === "string"; i++) {
+        try { v = JSON.parse(v); } catch { return []; }
+    }
+    return Array.isArray(v) ? v : [];
+}
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
       cb(null, 'uploads/');
@@ -82,7 +99,7 @@ exports.createPlanMensual = async (req, res, next) => {
 
         const planMensual = new tblplanmensual({
           nombre: nombre,
-          content: content,
+          content: normalizarContent(content),
           img: req.file ? req.file.path : '',
           cantidad: cantidad,
           ...sellarCreacion(req)
@@ -140,7 +157,7 @@ exports.updatePlanMensual = async (req, res, next) => {
             // lo que pasaba cuando el formulario mandaba el archivo solo.
             const cambios = {};
             if (nombre !== undefined) cambios.nombre = nombre;
-            if (content !== undefined) cambios.content = content;
+            if (content !== undefined) cambios.content = normalizarContent(content);
             if (cantidad !== undefined) cambios.cantidad = cantidad;
             if (req.file) cambios.img = req.file.path;
 
