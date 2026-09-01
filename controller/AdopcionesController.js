@@ -226,7 +226,7 @@ exports.createAdopcionColitas = async (req, res, next) => {
 // disponible mientras se revisa, para evitar solicitudes duplicadas.
 exports.solicitarAdopcion = async (req, res, next) => {
   try {
-    const { Nombre, Apellido, Dni, Direccion, telefono, Motivo, idanimal, correo } = req.body;
+    const { Nombre, Apellido, Dni, Direccion, telefono, Motivo, idanimal, correo, fecha_nacimiento } = req.body;
 
     if (!Nombre || !Apellido || !Dni || !Direccion || !telefono || !Motivo || !idanimal) {
       return res.status(400).json({
@@ -256,8 +256,17 @@ exports.solicitarAdopcion = async (req, res, next) => {
     }
 
     // El correo es opcional en el formulario público, pero si lo escriben mal
-    // el refugio se queda sin forma de responder y nadie se entera.
-    const problema = validarAdoptante({ correo });
+    // el refugio se queda sin forma de responder y nadie se entera. La fecha de
+    // nacimiento sí es obligatoria: el contrato de adopción lo firma un adulto,
+    // y este endpoint es público, así que la validación del navegador no basta.
+    if (!fecha_nacimiento) {
+      return res.status(400).json({
+        code: '001',
+        message: 'Ingresa tu fecha de nacimiento.',
+        data: null,
+      });
+    }
+    const problema = validarAdoptante({ correo, fecha_nacimiento });
     if (problema) {
       return res.status(400).json({ code: '001', message: problema, data: null });
     }
@@ -284,7 +293,7 @@ exports.solicitarAdopcion = async (req, res, next) => {
       // Los datos de contacto sí se refrescan con lo último que escribió;
       // el nombre y el DNI se dejan como estaban.
       await adoptante.update(
-        sellarModificacion(req, { Direccion, telefono, Motivo, ...normalizarAdoptante({ correo }) })
+        sellarModificacion(req, { Direccion, telefono, Motivo, ...normalizarAdoptante({ correo, fecha_nacimiento }) })
       );
     } else {
       adoptante = await tbladoptante.create({
@@ -295,7 +304,7 @@ exports.solicitarAdopcion = async (req, res, next) => {
         telefono,
         Motivo,
         Fecha_Registro: moment().format('YYYY-MM-DD'),
-        ...normalizarAdoptante({ correo }),
+        ...normalizarAdoptante({ correo, fecha_nacimiento }),
         ...sellarCreacion(req),
       });
     }
