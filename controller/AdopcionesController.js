@@ -228,7 +228,7 @@ exports.solicitarAdopcion = async (req, res, next) => {
   try {
     const { Nombre, Apellido, Dni, Direccion, telefono, Motivo, idanimal, correo, fecha_nacimiento } = req.body;
 
-    if (!Nombre || !Apellido || !Dni || !Direccion || !telefono || !Motivo || !idanimal) {
+    if (!Nombre || !Apellido || !Dni || !Direccion || !telefono || !Motivo || !idanimal || !correo) {
       return res.status(400).json({
         code: '001',
         message: 'Completa todos los campos para enviar tu solicitud.',
@@ -255,8 +255,8 @@ exports.solicitarAdopcion = async (req, res, next) => {
       });
     }
 
-    // El correo es opcional en el formulario público, pero si lo escriben mal
-    // el refugio se queda sin forma de responder y nadie se entera. La fecha de
+    // El correo es obligatorio: es el canal por el que se responde la solicitud
+    // y por el que después se hace el seguimiento de la adopción. La fecha de
     // nacimiento sí es obligatoria: el contrato de adopción lo firma un adulto,
     // y este endpoint es público, así que la validación del navegador no basta.
     if (!fecha_nacimiento) {
