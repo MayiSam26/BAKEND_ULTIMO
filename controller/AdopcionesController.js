@@ -8,6 +8,7 @@ const { fn, col } = require("sequelize");
 const { cerrarApadrinamientosSiSalio } = require("../helpers/apadrinamiento");
 const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
 const { conEdad } = require("../helpers/edad");
+const { validarAdoptante, normalizarAdoptante } = require("../helpers/adoptante");
 
 exports.getAdopciones = async (req, res, next) => {
   try {
@@ -132,6 +133,13 @@ exports.createAdopcion = async (req, res, next) => {
       Motivo,
       Fecha_Registro,
     } = req.body;
+    // La ficha ampliada (correo, distrito, vivienda, fecha de nacimiento) se
+    // valida en un solo sitio para los tres caminos que crean adoptantes.
+    const problema = validarAdoptante(req.body);
+    if (problema) {
+      return res.json({ code: "001", message: problema, data: null });
+    }
+
     // Mismo criterio que en el formulario público: un DNI, una persona.
     if (Dni) {
       const repetido = await tbladoptante.findOne({ where: { Dni } });
@@ -153,6 +161,7 @@ exports.createAdopcion = async (req, res, next) => {
       telefono: telefono,
       Motivo: Motivo,
       Fecha_Registro,
+      ...normalizarAdoptante(req.body),
       ...sellarCreacion(req),
     });
     await createAdoptante.save();
@@ -217,7 +226,7 @@ exports.createAdopcionColitas = async (req, res, next) => {
 // disponible mientras se revisa, para evitar solicitudes duplicadas.
 exports.solicitarAdopcion = async (req, res, next) => {
   try {
-    const { Nombre, Apellido, Dni, Direccion, telefono, Motivo, idanimal } = req.body;
+    const { Nombre, Apellido, Dni, Direccion, telefono, Motivo, idanimal, correo } = req.body;
 
     if (!Nombre || !Apellido || !Dni || !Direccion || !telefono || !Motivo || !idanimal) {
       return res.status(400).json({
@@ -246,6 +255,13 @@ exports.solicitarAdopcion = async (req, res, next) => {
       });
     }
 
+    // El correo es opcional en el formulario público, pero si lo escriben mal
+    // el refugio se queda sin forma de responder y nadie se entera.
+    const problema = validarAdoptante({ correo });
+    if (problema) {
+      return res.status(400).json({ code: '001', message: problema, data: null });
+    }
+
     const animal = await tblColitas.findOne({ where: { idanimal } });
     if (!animal) {
       return res.status(404).json({ code: '001', message: 'La mascota no existe.', data: null });
@@ -267,7 +283,9 @@ exports.solicitarAdopcion = async (req, res, next) => {
     if (adoptante) {
       // Los datos de contacto sí se refrescan con lo último que escribió;
       // el nombre y el DNI se dejan como estaban.
-      await adoptante.update(sellarModificacion(req, { Direccion, telefono, Motivo }));
+      await adoptante.update(
+        sellarModificacion(req, { Direccion, telefono, Motivo, ...normalizarAdoptante({ correo }) })
+      );
     } else {
       adoptante = await tbladoptante.create({
         Nombre,
@@ -277,6 +295,7 @@ exports.solicitarAdopcion = async (req, res, next) => {
         telefono,
         Motivo,
         Fecha_Registro: moment().format('YYYY-MM-DD'),
+        ...normalizarAdoptante({ correo }),
         ...sellarCreacion(req),
       });
     }

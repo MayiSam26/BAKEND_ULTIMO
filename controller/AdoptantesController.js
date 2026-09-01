@@ -3,6 +3,7 @@ const sequilize = require("../database/conection");
 const moment = require("moment");
 const { Op } = require("sequelize");
 const { sellarModificacion } = require("../helpers/auditoria");
+const { validarAdoptante, normalizarAdoptante } = require("../helpers/adoptante");
 
 exports.getAdoptantes = async (req, res, next) => {
   try {
@@ -101,6 +102,14 @@ exports.updateAdoptante = async (req, res, next) => {
       res.json(result);
       next();
     } else {
+      // Los campos de la ficha ampliada se revisan antes de tocar la base. La
+      // edición es parcial: lo que no viene en el cuerpo no se valida ni se
+      // modifica.
+      const problema = validarAdoptante(req.body);
+      if (problema) {
+        return res.json({ code: "001", message: problema, data: null });
+      }
+
       // Un DNI, una persona: al editar no se puede pisar el documento de otro
       // adoptante ya registrado.
       if (req.body.Dni) {
@@ -116,7 +125,7 @@ exports.updateAdoptante = async (req, res, next) => {
         }
       }
 
-      await tbladoptante.update(sellarModificacion(req, req.body), {
+      await tbladoptante.update(sellarModificacion(req, { ...req.body, ...normalizarAdoptante(req.body) }), {
         where: {
           idadoptante: id,
         },
