@@ -7,6 +7,7 @@ const { Op } = require("sequelize");
 const { fn, col } = require("sequelize");
 const { cerrarApadrinamientosSiSalio } = require("../helpers/apadrinamiento");
 const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
+const { conEdad } = require("../helpers/edad");
 
 exports.getAdopciones = async (req, res, next) => {
   try {
@@ -47,7 +48,9 @@ exports.getAdopciones = async (req, res, next) => {
     });
 
     const tipoAdoptantesLimpios = adoptantes.map((item) => item.get());
-    const animalesLimpios = animales.map((item) => item.get());
+    // Con la edad ya calculada: el contrato de adopcion la imprime, y una edad
+    // guardada a mano envejece mal (ver helpers/edad).
+    const animalesLimpios = animales.map((item) => conEdad(item.get()));
 
     const data = adopcion.map((animal) => {
       const adoptante = tipoAdoptantesLimpios.find(
