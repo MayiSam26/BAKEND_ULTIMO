@@ -12,10 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configurar Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "22"
 
@@ -32,7 +32,7 @@ jobs:
         run: node scripts/backup-db.js
 
       - name: Subir respaldo como artefacto
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: respaldo-bd-${{ github.run_id }}
           path: backups/*.sql
@@ -51,7 +51,7 @@ jobs:
         run: node scripts/backup-fotos.js
 
       - name: Subir fotos como artefacto
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: respaldo-fotos-${{ github.run_id }}
           path: backups/fotos
