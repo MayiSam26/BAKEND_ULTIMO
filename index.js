@@ -37,7 +37,10 @@ const permisos = require("./router/Permiso");
 const contacto = require("./router/Contacto");
 const apadrinado = require("./router/Apadrinado");
 const voluntarioVisita = require("./router/VoluntarioVisita");
+const erroresApp = require("./router/ErrorApp");
+const push = require("./router/Push");
 const verifyToken = require("./middleware/auth");
+const { iniciarRecordatorios } = require("./helpers/recordatorios");
 
 require("./Entity/User");
 require("./Entity/TipoPersona");
@@ -60,10 +63,16 @@ require("./Entity/Noticia");
 require("./Entity/Veterinaria");
 require("./Entity/Permiso");
 require("./Entity/Apadrinado");
+require("./Entity/ErrorApp");
+require("./Entity/PushToken");
 
 conexion
   .sync()
-  .then(() => console.log("Conexion exitosa"))
+  .then(() => {
+    console.log("Conexion exitosa");
+    // Notificaciones de cada mañana (controles veterinarios y visitas).
+    iniciarRecordatorios();
+  })
   .catch((error) => console.log("Error de conexion: ", error));
 
 const app = express();
@@ -135,6 +144,9 @@ app.use("/auditoria-registros", verifyToken, auditoriaRegistros());
 app.use("/apadrinado", verifyToken, apadrinado());
 app.use("/voluntario-visita", verifyToken, voluntarioVisita());
 app.use("/contacto", contacto());
+// Solo la app móvil: fallos que anota el teléfono y notificaciones push.
+app.use("/app-errores", erroresApp());
+app.use("/push", verifyToken, push());
 
 const port = process.env.PORT || 5000;
 app.listen(port, () => console.log(`Server running on port ${port}`));
