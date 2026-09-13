@@ -7,6 +7,7 @@ const tbldonante = require("../Entity/Donante");
 const { fn, col } = require("sequelize");
 const { Op } = require("sequelize");
 const { sellarCreacion } = require("../helpers/auditoria");
+const { leerPaginacion, buscarPaginado, metaPaginacion } = require("../helpers/paginacion");
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -31,8 +32,9 @@ const upload = multer({
 }).single("evidencia");
 exports.getIngresos = async (req, res, next) => {
     try {
-      // 1. Obtener todos los ingresos
-      const ingresos = await tblingreso.findAll({ raw: true });
+      // 1. Obtener los ingresos (todos, o una página si la app la pide)
+      const pag = leerPaginacion(req.query);
+      const { filas: ingresos, total } = await buscarPaginado(tblingreso, { raw: true }, pag);
   
       // 2. Extraer los IDs de donantes únicos desde ingresos
       const idsDonantes = ingresos.map(item => item.iddonantes).filter(Boolean);
@@ -57,6 +59,7 @@ exports.getIngresos = async (req, res, next) => {
         code: "000",
         message: "success",
         data,
+        ...metaPaginacion(pag, total),
       });
   
     } catch (error) {

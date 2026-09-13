@@ -3,24 +3,27 @@ const sequilize = require("../database/conection")
 const { Op } = require('sequelize');
 const tblperdidos = require("../Entity/Perdidos");
 const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
+const { leerPaginacion, buscarPaginado, metaPaginacion } = require("../helpers/paginacion");
 
 exports.getDueno = async (req, res) => {
     try {
         const { busqueda } = req.body;
         console.log("busqueda:", busqueda);
 
-        const resultados = await tbldueno.findAll({
+        const pag = leerPaginacion(req.body);
+        const { filas: resultados, total } = await buscarPaginado(tbldueno, {
             where: busqueda ? {
                 nombre: {
                     [Op.like]: `%${busqueda}%`
                 }
             } : {}
-        });
+        }, pag);
 
         const result = {
             code: '000',
             message: 'success',
-            data: resultados
+            data: resultados,
+            ...metaPaginacion(pag, total)
         };
 
         res.json(result);

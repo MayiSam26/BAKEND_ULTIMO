@@ -7,6 +7,7 @@ const multer = require("multer");
 const path = require("path");
 const { Op } = require("sequelize");
 const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
+const { leerPaginacion, buscarPaginado, metaPaginacion } = require("../helpers/paginacion");
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -78,14 +79,15 @@ exports.getPerdidos = async (req, res) => {
             };
         }
 
-        const perdidos = await tblmascotaperdida.findAll({
+        const pag = leerPaginacion(req.body);
+        const { filas: perdidos, total } = await buscarPaginado(tblmascotaperdida, {
             where: filters,
             order: [["idmascotaperdida", "DESC"]],
-        });
+        }, pag);
 
         const data = await joinPerdidos(perdidos);
 
-        res.json({ code: "000", message: "success", data });
+        res.json({ code: "000", message: "success", data, ...metaPaginacion(pag, total) });
     } catch (error) {
         console.error("Error en getPerdidos:", error);
         res.status(500).json({ error: "Error en el servidor" });

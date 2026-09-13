@@ -4,6 +4,7 @@ const moment = require("moment");
 const { Op } = require("sequelize");
 const { sellarModificacion } = require("../helpers/auditoria");
 const { validarAdoptante, normalizarAdoptante } = require("../helpers/adoptante");
+const { leerPaginacion, buscarPaginado, metaPaginacion } = require("../helpers/paginacion");
 
 exports.getAdoptantes = async (req, res, next) => {
   try {
@@ -33,15 +34,14 @@ exports.getAdoptantes = async (req, res, next) => {
       };
     }
 
-    const adoptante = await tbladoptante.findAll({
-      where: filters,
-    });
-  
+    const pag = leerPaginacion(req.body);
+    const { filas: adoptante, total } = await buscarPaginado(tbladoptante, { where: filters }, pag);
 
     res.json({
       code: "000",
       message: "success",
       data: adoptante,
+      ...metaPaginacion(pag, total),
     });
   } catch (error) {
     console.error("Error en getAdoptantes:", error);

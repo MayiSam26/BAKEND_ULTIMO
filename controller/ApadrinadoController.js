@@ -2,6 +2,7 @@ const tblapadrinado = require("../Entity/Apadrinado");
 const tblanimal = require("../Entity/Colitas");
 const { Op } = require("sequelize");
 const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
+const { leerPaginacion, buscarPaginado, metaPaginacion } = require("../helpers/paginacion");
 
 async function joinApadrinados(apadrinados) {
     const idsAnimal = apadrinados.map(item => item.idanimal);
@@ -34,14 +35,15 @@ exports.getApadrinados = async (req, res) => {
             filters.padrino_nombre = { [Op.like]: `%${busqueda}%` };
         }
 
-        const apadrinados = await tblapadrinado.findAll({
+        const pag = leerPaginacion(req.body);
+        const { filas: apadrinados, total } = await buscarPaginado(tblapadrinado, {
             where: filters,
             order: [["idapadrinado", "DESC"]],
-        });
+        }, pag);
 
         const data = await joinApadrinados(apadrinados);
 
-        res.json({ code: "000", message: "success", data });
+        res.json({ code: "000", message: "success", data, ...metaPaginacion(pag, total) });
     } catch (error) {
         console.error("Error en getApadrinados:", error);
         res.status(500).json({ error: "Error en el servidor" });

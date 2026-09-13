@@ -7,6 +7,7 @@ const multer = require("multer");
 const path = require("path");
 const { Op } = require("sequelize");
 const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
+const { leerPaginacion, buscarPaginado, metaPaginacion } = require("../helpers/paginacion");
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -36,10 +37,11 @@ exports.getSeguimientos = async (req, res, next) => {
     if (estado) filters.Estado = estado;
     if (idadopcion) filters.idadopcion = idadopcion;
 
-    const seguimientos = await tblseguimiento.findAll({
+    const pag = leerPaginacion(req.body);
+    const { filas: seguimientos, total } = await buscarPaginado(tblseguimiento, {
       where: filters,
       order: [["Fecha_Programada", "DESC"]],
-    });
+    }, pag);
 
     const idsAdopcion = seguimientos.map((s) => s.idadopcion);
     const adopciones = await tbladopcion.findAll({ where: { idadopcion: { [Op.in]: idsAdopcion } } });
@@ -65,7 +67,7 @@ exports.getSeguimientos = async (req, res, next) => {
       };
     });
 
-    res.json({ code: "000", message: "success", data });
+    res.json({ code: "000", message: "success", data, ...metaPaginacion(pag, total) });
   } catch (error) {
     console.error("Error en getSeguimientos:", error);
     res.status(500).json({ error: "Error en el servidor" });

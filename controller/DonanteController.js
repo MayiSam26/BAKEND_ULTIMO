@@ -1,15 +1,21 @@
 const sequilize = require("../database/conection");
 const tbldonantes = require("../Entity/Donante");
 const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
+const { leerPaginacion, paginarEnMemoria, metaPaginacion } = require("../helpers/paginacion");
 exports.getDonante = async (req, res, next) => {
   try {
     await sequilize
       .query("CALL sp_getdonante()", { type: sequilize.QueryTypes.RAW })
       .then((results) => {
+        // El procedimiento devuelve la lista entera: aquí solo se recorta la
+        // página que pide la app.
+        const pag = leerPaginacion(req.query);
+        const { filas, total } = paginarEnMemoria(results, pag);
         const result = {
           code: "000",
           message: "success",
-          data: results,
+          data: filas,
+          ...metaPaginacion(pag, total),
         };
         res.json(result);
       })

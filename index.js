@@ -105,6 +105,8 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+// Versión reducida de cualquier foto de /uploads (ver MiniaturaController)
+app.get("/miniatura/uploads/:archivo", require("./controller/MiniaturaController").getMiniatura);
 
 // "/", "/plan-mensual", "/colitas", "/adopciones", "/noticias" y "/perdidos"
 // manejan su propia mezcla de rutas públicas/protegidas internamente
