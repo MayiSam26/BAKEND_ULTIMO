@@ -10,6 +10,7 @@ const tbltipoanimal = require("../Entity/TipoAnimal");
 const { cerrarApadrinamientosSiSalio } = require("../helpers/apadrinamiento");
 const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
 const { conEdad, nacimientoDesdeEstimacion } = require("../helpers/edad");
+const { responderErrorSubida } = require("../helpers/errorSubida");
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -267,11 +268,7 @@ exports.findByIcolitas =  async (req, res, next) => {
 exports.updateColitas = async (req, res, next) => {
     try {
         upload(req, res, async function (err) {
-            if (err instanceof multer.MulterError) {
-                return res.status(500).json({ error: 'Error al subir la imagen', details: err });
-            } else if (err) {
-                return res.status(500).json({ error: 'Ocurrió un error', details: err });
-            }
+            if (err) return responderErrorSubida(res, err);
 
             const id = req.params.id;
             const plan = await tblanimal.findOne({

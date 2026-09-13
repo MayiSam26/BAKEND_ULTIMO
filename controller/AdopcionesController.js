@@ -10,6 +10,7 @@ const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
 const { conEdad } = require("../helpers/edad");
 const { validarAdoptante, normalizarAdoptante } = require("../helpers/adoptante");
 const { leerPaginacion, buscarPaginado, metaPaginacion } = require("../helpers/paginacion");
+const { usuariosQueVen, enviarPush, notificarSinEsperar } = require("../helpers/push");
 
 exports.getAdopciones = async (req, res, next) => {
   try {
@@ -310,7 +311,7 @@ exports.solicitarAdopcion = async (req, res, next) => {
       });
     }
 
-    await tbladopcion.create({
+    const solicitud = await tbladopcion.create({
       idadoptante: adoptante.idadoptante,
       idanimal,
       Fecha_Adopcion: new Date(),
@@ -327,6 +328,16 @@ exports.solicitarAdopcion = async (req, res, next) => {
       message: 'Tu solicitud fue enviada. El refugio se pondrá en contacto contigo pronto.',
       data: null,
     });
+
+    // Aviso al teléfono de quien lleva adopciones. Solo el nombre de la
+    // colita: los datos del adoptante no viajan en la notificación.
+    notificarSinEsperar(async () =>
+      enviarPush(await usuariosQueVen('adopcion'), {
+        titulo: 'Nueva solicitud de adopción',
+        cuerpo: `Alguien quiere adoptar a ${animal.nombre} desde la web.`,
+        datos: { url: `/adopcion/${solicitud.idadopcion}` },
+      })
+    );
   } catch (error) {
     console.log("error server: ", error);
     res.status(500).json({ code: '001', message: 'Error al enviar la solicitud.', data: null });

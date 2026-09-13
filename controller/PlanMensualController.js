@@ -3,6 +3,7 @@ const sequilize = require("../database/conection")
 const multer = require('multer');
 const path = require('path');
 const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
+const { responderErrorSubida } = require("../helpers/errorSubida");
 
 /**
  * La columna "content" es de tipo JSON: tiene que guardarse como arreglo, no
@@ -126,12 +127,7 @@ exports.createPlanMensual = async (req, res, next) => {
 exports.updatePlanMensual = async (req, res, next) => {
     try {
         upload(req, res, async function (err) {
-            if (err instanceof multer.MulterError) {
-                return res.status(500).json({ error: 'Error al subir la imagen', details: err });
-            } else if (err) {
-                
-                return res.status(500).json({ error: 'Ocurrió un error', details: err });
-            }
+            if (err) return responderErrorSubida(res, err);
 
            
             const id = req.params.id; 
