@@ -44,9 +44,9 @@ describe("usuariosQueVen", () => {
 describe("enviarPush", () => {
   test("sin usuarios o sin teléfonos no llama a Expo", async () => {
     const fetchImpl = jest.fn();
-    expect(await enviarPush([], { titulo: "t", cuerpo: "c" }, { fetchImpl })).toEqual({ enviados: 0, invalidos: 0 });
+    expect(await enviarPush([], { titulo: "t", cuerpo: "c" }, { fetchImpl })).toMatchObject({ enviados: 0, invalidos: 0 });
     tblpushtoken.findAll.mockResolvedValue([]);
-    expect(await enviarPush([1], { titulo: "t", cuerpo: "c" }, { fetchImpl })).toEqual({ enviados: 0, invalidos: 0 });
+    expect(await enviarPush([1], { titulo: "t", cuerpo: "c" }, { fetchImpl })).toMatchObject({ enviados: 0, invalidos: 0 });
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
@@ -66,7 +66,7 @@ describe("enviarPush", () => {
     expect(JSON.parse(fetchImpl.mock.calls[0][1].body)).toHaveLength(100);
     expect(JSON.parse(fetchImpl.mock.calls[1][1].body)).toHaveLength(50);
     expect(JSON.parse(fetchImpl.mock.calls[0][1].body)[0]).toMatchObject({ title: "Hola", body: "Prueba", data: { url: "/veterinaria" }, channelId: "avisos" });
-    expect(r).toEqual({ enviados: 149, invalidos: 1 });
+    expect(r).toMatchObject({ enviados: 149, invalidos: 1, telefonos: 150, errores: [] });
     expect(tblpushtoken.destroy.mock.calls[0][0].where.token[Op.in]).toEqual([token(120)]);
   });
 
@@ -74,7 +74,7 @@ describe("enviarPush", () => {
     tblpushtoken.findAll.mockResolvedValue([{ token: token(1) }]);
     const errorConsola = jest.spyOn(console, "error").mockImplementation(() => {});
     const fetchImpl = jest.fn().mockRejectedValue(new Error("sin red"));
-    await expect(enviarPush([1], { titulo: "t", cuerpo: "c" }, { fetchImpl })).resolves.toEqual({ enviados: 0, invalidos: 0 });
+    await expect(enviarPush([1], { titulo: "t", cuerpo: "c" }, { fetchImpl })).resolves.toMatchObject({ enviados: 0, invalidos: 0, telefonos: 1, errores: ["No se pudo contactar al servicio de notificaciones."] });
     errorConsola.mockRestore();
   });
 });

@@ -35,9 +35,10 @@ async function usuariosQueVen(seccion, { roles } = {}) {
  * Los teléfonos que Expo da por desinstalados se borran de la tabla.
  */
 async function enviarPush(idsUsuarios, { titulo, cuerpo, datos }, { fetchImpl = fetch } = {}) {
-  if (!idsUsuarios || !idsUsuarios.length) return { enviados: 0, invalidos: 0 };
+  const vacio = { enviados: 0, invalidos: 0, telefonos: 0, errores: [], tickets: [] };
+  if (!idsUsuarios || !idsUsuarios.length) return vacio;
   const tokens = await tblpushtoken.findAll({ where: { iduser: { [Op.in]: idsUsuarios } } });
-  if (!tokens.length) return { enviados: 0, invalidos: 0 };
+  if (!tokens.length) return vacio;
 
   const mensajes = tokens.map((t) => ({
     to: t.token,
@@ -53,23 +54,52 @@ async function enviarPush(idsUsuarios, { titulo, cuerpo, datos }, { fetchImpl = 
 
   let enviados = 0;
   const invalidos = [];
+  const errores = [];
+  const tickets = [];
   for (let i = 0; i < mensajes.length; i += POR_TANDA) {
     const tanda = mensajes.slice(i, i + POR_TANDA);
     try {
       const r = await fetchImpl(URL_EXPO, { method: "POST", headers, body: JSON.stringify(tanda) });
       const respuesta = await r.json().catch(() => null);
-      const tickets = (respuesta && respuesta.data) || [];
-      tickets.forEach((ticket, k) => {
-        if (ticket && ticket.status === "ok") enviados++;
-        else if (ticket && ticket.details && ticket.details.error === "DeviceNotRegistered") invalidos.push(tanda[k].to);
+      ((respuesta && respuesta.data) || []).forEach((ticket, k) => {
+        if (ticket && ticket.status === "ok") {
+          enviados++;
+          if (ticket.id) tickets.push(ticket.id);
+        } else if (ticket && ticket.details && ticket.details.error === "DeviceNotRegistered") {
+          invalidos.push(tanda[k].to);
+        } else if (ticket) {
+          errores.push(ticket.message || (ticket.details && ticket.details.error) || "error desconocido");
+        }
       });
-      if (!r.ok) console.error(`Push: Expo respondió HTTP ${r.status}`);
+      if (!r.ok) {
+        console.error(`Push: Expo respondió HTTP ${r.status}`);
+        errores.push(`Expo respondió HTTP ${r.status}`);
+      }
     } catch (error) {
       console.error("Push: no se pudo contactar a Expo:", error.message);
+      errores.push("No se pudo contactar al servicio de notificaciones.");
     }
   }
   if (invalidos.length) await tblpushtoken.destroy({ where: { token: { [Op.in]: invalidos } } });
-  return { enviados, invalidos: invalidos.length };
+  return { enviados, invalidos: invalidos.length, telefonos: tokens.length, errores, tickets };
+}
+
+/**
+ * Recibos de entrega: Expo confirma después si Google (FCM) aceptó cada
+ * notificación. Aquí aparecen los fallos de configuración, p. ej. una clave
+ * FCM que falta o no vale (InvalidCredentials). Devuelve los mensajes de error.
+ */
+async function leerRecibos(ids, { fetchImpl = fetch } = {}) {
+  if (!ids || !ids.length) return [];
+  const r = await fetchImpl("https://exp.host/--/api/v2/push/getReceipts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ ids }),
+  });
+  const respuesta = await r.json().catch(() => null);
+  return Object.values((respuesta && respuesta.data) || {})
+    .filter((recibo) => recibo && recibo.status === "error")
+    .map((recibo) => [recibo.details && recibo.details.error, recibo.message].filter(Boolean).join(": "));
 }
 
 /** Para llamar después de responder: un fallo al notificar nunca rompe la operación. */
@@ -79,4 +109,4 @@ function notificarSinEsperar(tarea) {
     .catch((error) => console.error("Push:", error.message));
 }
 
-module.exports = { esTokenExpo, usuariosQueVen, enviarPush, notificarSinEsperar };
+module.exports = { esTokenExpo, usuariosQueVen, enviarPush, leerRecibos, notificarSinEsperar };
