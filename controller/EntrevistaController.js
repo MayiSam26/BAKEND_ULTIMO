@@ -5,6 +5,7 @@ const tblColitas = require("../Entity/Colitas");
 const moment = require("moment");
 const { Op } = require("sequelize");
 const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
+const { leerPaginacion, buscarPaginado, metaPaginacion } = require("../helpers/paginacion");
 
 exports.getEntrevistas = async (req, res, next) => {
   try {
@@ -13,10 +14,11 @@ exports.getEntrevistas = async (req, res, next) => {
     if (estado) filters.Estado = estado;
     if (idadopcion) filters.idadopcion = idadopcion;
 
-    const entrevistas = await tblentrevista.findAll({
+    const pag = leerPaginacion(req.body);
+    const { filas: entrevistas, total } = await buscarPaginado(tblentrevista, {
       where: filters,
       order: [["Fecha_Entrevista", "DESC"]],
-    });
+    }, pag);
 
     const idsAdopcion = entrevistas.map((e) => e.idadopcion);
     const adopciones = await tbladopcion.findAll({ where: { idadopcion: { [Op.in]: idsAdopcion } } });
@@ -42,7 +44,7 @@ exports.getEntrevistas = async (req, res, next) => {
       };
     });
 
-    res.json({ code: "000", message: "success", data });
+    res.json({ code: "000", message: "success", data, ...metaPaginacion(pag, total) });
   } catch (error) {
     console.error("Error en getEntrevistas:", error);
     res.status(500).json({ error: "Error en el servidor" });

@@ -1,15 +1,21 @@
 const tblregistroegreso = require("../Entity/Egreso");
 const sequilize = require("../database/conection")
 const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
+const { leerPaginacion, paginarEnMemoria, metaPaginacion } = require("../helpers/paginacion");
 
 exports.findAllEgreso = async(req, res, next) =>{
     try {
         await sequilize.query('CALL sp_getEgreso()', { type: sequilize.QueryTypes.RAW })
         .then(results => {
+            // El procedimiento devuelve la lista entera: aquí solo se recorta
+            // la página que pide la app.
+            const pag = leerPaginacion(req.query)
+            const { filas, total } = paginarEnMemoria(results, pag)
             const result ={
                 code :'000',
                 message:'success',
-                data:results
+                data:filas,
+                ...metaPaginacion(pag, total)
             }
             res.json(result); 
         })

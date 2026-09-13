@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const multer = require("multer");
 const path = require("path");
+const { tokenAcceso, tokenRenovacion, validarRenovacion } = require("../helpers/sesion");
 
 // Roles del sistema según la tesis (CU02, CU17, CU18): Administrador,
 // Voluntario y Veterinario. "Persona interesada" no tiene cuenta propia en
@@ -201,8 +202,9 @@ exports.sessionUser = async (req, res, next) => {
             });
         }
 
-        // Validamos la contraseña
-        if (!bcrypt.compareSync(pass, findOneUser.password)) {
+        // Validamos la contraseña. La versión asíncrona no bloquea el servidor
+        // durante el hash (con coste 12 son unos cientos de ms por intento).
+        if (!(await bcrypt.compare(String(pass || ""), findOneUser.password))) {
             return res.json({
                 code: '001',
                 message: 'Contraseña incorrecta o usuario incorrecto',
@@ -221,26 +223,52 @@ exports.sessionUser = async (req, res, next) => {
 
         // Si la contraseña es correcta, generamos el token. Se incluye el rol
         // para que el panel muestre solo las funciones permitidas (CU02).
-        const token = jwt.sign({
-            usuario: findOneUser.usuario,
-            iduser: findOneUser.iduser,
-            rol: findOneUser.rol
-        }, process.env.JWT_SECRET, {
-            expiresIn: "4h"
-        });
-
-        // Retornar el token y respuesta exitosa
-        return res.json({
+        const respuesta = {
             code: '000',
             usuario: findOneUser.usuario,
             foto: findOneUser.foto,
             rol: findOneUser.rol,
-            token: token
-        });
+            token: tokenAcceso(findOneUser)
+        };
+
+        // Solo la app móvil pide mantener la sesión: el panel web no lo manda
+        // y sigue recibiendo exactamente lo mismo que antes.
+        if (req.body.mantenerSesion === true) {
+            respuesta.refreshToken = tokenRenovacion(findOneUser);
+        }
+
+        return res.json(respuesta);
 
     } catch (error) {
         console.log("error server: ", error);
         return res.status(500).json({ 'Error server': error });
+    }
+}
+
+// App móvil: cambia un token de renovación válido por un token de acceso
+// nuevo, y rota también el de renovación (el viejo sigue valiendo hasta que
+// vence, pero la app se queda siempre con el último).
+exports.renovarSesion = async (req, res, next) => {
+    try {
+        const { user, error } = await validarRenovacion(
+            req.body.refreshToken,
+            (iduser) => tblUser.findOne({ where: { iduser } })
+        );
+        if (error) {
+            return res.status(401).json({ code: '001', message: error, data: null });
+        }
+
+        return res.json({
+            code: '000',
+            usuario: user.usuario,
+            foto: user.foto,
+            rol: user.rol,
+            token: tokenAcceso(user),
+            refreshToken: tokenRenovacion(user)
+        });
+    } catch (error) {
+        console.log("error server: ", error);
+        return res.status(500).json({ code: '001', message: 'Error del servidor', data: null });
     }
 }
 

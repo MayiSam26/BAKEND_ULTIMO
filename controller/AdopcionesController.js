@@ -9,6 +9,7 @@ const { cerrarApadrinamientosSiSalio } = require("../helpers/apadrinamiento");
 const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
 const { conEdad } = require("../helpers/edad");
 const { validarAdoptante, normalizarAdoptante } = require("../helpers/adoptante");
+const { leerPaginacion, buscarPaginado, metaPaginacion } = require("../helpers/paginacion");
 
 exports.getAdopciones = async (req, res, next) => {
   try {
@@ -29,9 +30,8 @@ exports.getAdopciones = async (req, res, next) => {
   };
 }
 
-    const adopcion = await tbladopcion.findAll({
-      where: filters,
-    });
+    const pag = leerPaginacion(req.body);
+    const { filas: adopcion, total } = await buscarPaginado(tbladopcion, { where: filters }, pag);
 
     const idsAdopcion = adopcion.map((item) => item.idadoptante);
     const idsAnimal = adopcion.map((item) => item.idanimal);
@@ -71,6 +71,7 @@ exports.getAdopciones = async (req, res, next) => {
       code: "000",
       message: "success",
       data: data,
+      ...metaPaginacion(pag, total),
     });
   } catch (error) {
     console.error("Error en getAdoptantes:", error);

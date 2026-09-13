@@ -10,6 +10,7 @@ const requireRole = require("../middleware/requireRole")
 const requirePermission = require("../middleware/requirePermission")
 const loginLimiter = require("../middleware/loginLimiter")
 const recoveryLimiter = require("../middleware/recoveryLimiter")
+const refreshLimiter = require("../middleware/refreshLimiter")
 const publicFormLimiter = require("../middleware/publicFormLimiter")
 module.exports = () =>{
     router.get("/",GeneralController.init)
@@ -20,6 +21,7 @@ module.exports = () =>{
     router.put("/usuario/estado/:id",verifyToken,requireRole("Administrador"),userController.setUsuarioEstado)
     router.put("/usuario/password/:id",verifyToken,requireRole("Administrador"),userController.changePasswordAdmin)
     router.post("/session-user",loginLimiter,userController.sessionUser)
+    router.post("/session-refresh",refreshLimiter,userController.renovarSesion)
 
     //recuperar contraseña (público, con pregunta secreta)
     router.post("/usuario/pregunta",verifyToken,userController.setPreguntaSecreta)
