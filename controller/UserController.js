@@ -4,8 +4,9 @@ const bcrypt = require("bcrypt");
 const multer = require("multer");
 const { conCaptura } = require("../helpers/errorSubida");
 const path = require("path");
-const { tokenAcceso, tokenRenovacion, validarRenovacion } = require("../helpers/sesion");
+const { tokenAcceso, tokenRenovacion, validarRenovacion, nuevaSesionId } = require("../helpers/sesion");
 const { olvidarUsuario } = require("../helpers/estadoUsuario");
+const { estaRevocada, revocar } = require("../helpers/sesionesRevocadas");
 
 // Roles del sistema según la tesis (CU02, CU17, CU18): Administrador,
 // Voluntario y Veterinario. "Persona interesada" no tiene cuenta propia en
@@ -238,18 +239,21 @@ exports.sessionUser = async (req, res, next) => {
 
         // Si la contraseña es correcta, generamos el token. Se incluye el rol
         // para que el panel muestre solo las funciones permitidas (CU02).
+        // Cada inicio de sesión tiene su identificador: "Cerrar sesión" lo anula
+        // en el servidor (token de acceso y de renovación a la vez).
+        const sid = nuevaSesionId();
         const respuesta = {
             code: '000',
             usuario: findOneUser.usuario,
             foto: findOneUser.foto,
             rol: findOneUser.rol,
-            token: tokenAcceso(findOneUser)
+            token: tokenAcceso(findOneUser, sid)
         };
 
         // Solo la app móvil pide mantener la sesión: el panel web no lo manda
         // y sigue recibiendo exactamente lo mismo que antes.
         if (req.body.mantenerSesion === true) {
-            respuesta.refreshToken = tokenRenovacion(findOneUser);
+            respuesta.refreshToken = tokenRenovacion(findOneUser, sid);
         }
 
         return res.json(respuesta);
@@ -265,25 +269,56 @@ exports.sessionUser = async (req, res, next) => {
 // vence, pero la app se queda siempre con el último).
 exports.renovarSesion = async (req, res, next) => {
     try {
-        const { user, error } = await validarRenovacion(
+        const { user, sid, error } = await validarRenovacion(
             req.body.refreshToken,
-            (iduser) => tblUser.findOne({ where: { iduser } })
+            (iduser) => tblUser.findOne({ where: { iduser } }),
+            { estaRevocada }
         );
         if (error) {
             return res.status(401).json({ code: '001', message: error, data: null });
         }
 
+        // Los tokens nuevos siguen siendo de la misma sesión (mismo sid).
         return res.json({
             code: '000',
             usuario: user.usuario,
             foto: user.foto,
             rol: user.rol,
-            token: tokenAcceso(user),
-            refreshToken: tokenRenovacion(user)
+            token: tokenAcceso(user, sid),
+            refreshToken: tokenRenovacion(user, sid)
         });
     } catch (error) {
         console.log("error server: ", error);
         return res.status(500).json({ code: '001', message: 'Error del servidor', data: null });
+    }
+}
+
+// POST /session-logout  (Authorization con el token de acceso y/o
+// { refreshToken } en el cuerpo). Anula la sesión en el servidor hasta que
+// sus tokens habrían vencido. Siempre responde igual: no revela si el token
+// valía. Se acepta un token vencido, para poder cerrar una sesión caducada.
+exports.cerrarSesion = async (req, res) => {
+    try {
+        const authHeader = req.headers["authorization"];
+        const tokens = [authHeader && authHeader.split(" ")[1], req.body && req.body.refreshToken].filter(Boolean);
+        const porSesion = new Map();
+        for (const token of tokens) {
+            let decoded;
+            try {
+                decoded = jwt.verify(String(token), process.env.JWT_SECRET, { ignoreExpiration: true });
+            } catch {
+                continue;
+            }
+            if (!decoded.sid || (decoded.purpose && decoded.purpose !== "refresh")) continue;
+            const expira = (decoded.exp || 0) * 1000;
+            const actual = porSesion.get(decoded.sid);
+            porSesion.set(decoded.sid, { iduser: decoded.iduser, expira: Math.max(expira, actual ? actual.expira : 0) });
+        }
+        for (const [sid, { iduser, expira }] of porSesion) await revocar(sid, iduser, expira);
+        return res.json({ code: '000', message: 'Sesión cerrada', data: null });
+    } catch (error) {
+        console.log("error cerrando sesión: ", error);
+        return res.status(500).json({ code: '001', message: 'No se pudo cerrar la sesión en el servidor.', data: null });
     }
 }
 

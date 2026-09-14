@@ -20,30 +20,33 @@ function huellaPassword(passwordHash) {
   return crypto.createHash("sha256").update(String(passwordHash || "")).digest("hex").slice(0, 16);
 }
 
-function tokenAcceso(user) {
-  // `v` (huella de la contraseña) permite que verifyToken rechace el token en
-  // cuanto la contraseña cambia, sin esperar las 4 h.
-  return jwt.sign(
-    { usuario: user.usuario, iduser: user.iduser, rol: user.rol, v: huellaPassword(user.password) },
-    process.env.JWT_SECRET,
-    { expiresIn: DURACION_ACCESO }
-  );
+/** Identificador de un inicio de sesión: lo comparten su token de acceso y el de renovación. */
+function nuevaSesionId() {
+  return crypto.randomUUID();
 }
 
-function tokenRenovacion(user) {
-  return jwt.sign(
-    { iduser: user.iduser, purpose: "refresh", v: huellaPassword(user.password) },
-    process.env.JWT_SECRET,
-    { expiresIn: DURACION_RENOVACION }
-  );
+function tokenAcceso(user, sid) {
+  // `v` (huella de la contraseña) permite que verifyToken rechace el token en
+  // cuanto la contraseña cambia, sin esperar las 4 h. `sid` permite cerrar la
+  // sesión desde el servidor (ver sesionesRevocadas).
+  const datos = { usuario: user.usuario, iduser: user.iduser, rol: user.rol, v: huellaPassword(user.password) };
+  if (sid) datos.sid = sid;
+  return jwt.sign(datos, process.env.JWT_SECRET, { expiresIn: DURACION_ACCESO });
+}
+
+function tokenRenovacion(user, sid) {
+  const datos = { iduser: user.iduser, purpose: "refresh", v: huellaPassword(user.password) };
+  if (sid) datos.sid = sid;
+  return jwt.sign(datos, process.env.JWT_SECRET, { expiresIn: DURACION_RENOVACION });
 }
 
 /**
  * Comprueba un token de renovación contra el usuario que devuelve
- * `buscarUsuario(iduser)`. Devuelve { user } si vale o { error } con el
- * mensaje para el cliente.
+ * `buscarUsuario(iduser)`. Devuelve { user, sid } si vale o { error } con el
+ * mensaje para el cliente. `sid` es el de la sesión (o uno nuevo si el token
+ * es anterior a los identificadores de sesión).
  */
-async function validarRenovacion(refreshToken, buscarUsuario) {
+async function validarRenovacion(refreshToken, buscarUsuario, { estaRevocada = () => false } = {}) {
   if (!refreshToken) return { error: "Token de renovación no proporcionado" };
 
   let decoded;
@@ -55,6 +58,9 @@ async function validarRenovacion(refreshToken, buscarUsuario) {
   if (decoded.purpose !== "refresh") {
     return { error: "Token no válido para esta operación" };
   }
+  if (estaRevocada(decoded.sid)) {
+    return { error: "La sesión se cerró. Vuelve a iniciar sesión." };
+  }
 
   const user = await buscarUsuario(decoded.iduser);
   if (!user) return { error: "La sesión expiró. Vuelve a iniciar sesión." };
@@ -64,7 +70,7 @@ async function validarRenovacion(refreshToken, buscarUsuario) {
   if (decoded.v !== huellaPassword(user.password)) {
     return { error: "La contraseña cambió. Vuelve a iniciar sesión." };
   }
-  return { user };
+  return { user, sid: decoded.sid || nuevaSesionId() };
 }
 
-module.exports = { tokenAcceso, tokenRenovacion, validarRenovacion, huellaPassword };
+module.exports = { tokenAcceso, tokenRenovacion, validarRenovacion, huellaPassword, nuevaSesionId };
