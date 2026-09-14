@@ -2,6 +2,7 @@ const tblUser = require("../Entity/User");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const multer = require("multer");
+const { conCaptura } = require("../helpers/errorSubida");
 const path = require("path");
 const { tokenAcceso, tokenRenovacion, validarRenovacion } = require("../helpers/sesion");
 
@@ -11,8 +12,12 @@ const { tokenAcceso, tokenRenovacion, validarRenovacion } = require("../helpers/
 // formulario de adopción público, sin necesidad de iniciar sesión.
 const ROLES_VALIDOS = ["Administrador", "Voluntario", "Veterinario"];
 
+// Hash bcrypt (coste 12) de una clave aleatoria que nadie conoce: el login lo
+// compara cuando el usuario no existe, para tardar lo mismo que con uno real.
+const HASH_DE_RELLENO = "$2b$12$R.8ToeIgtO1oCQrixAG1GeZSHXo/FgJL7GacqqWACdx9h/Sj40/Z.";
+
 const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-const uploadFoto = multer({
+const uploadFoto = conCaptura(multer({
     storage: multer.diskStorage({
         destination: (req, file, cb) => cb(null, 'uploads/'),
         filename: (req, file, cb) => cb(null, 'perfil-' + Date.now() + path.extname(file.originalname))
@@ -25,7 +30,7 @@ const uploadFoto = multer({
             cb(new Error('Solo se permiten imágenes (jpg, png, webp, gif)'));
         }
     }
-}).single('foto');
+}).single('foto'));
 
 exports.createUser = async (req, res, next) => {
     try {
@@ -183,7 +188,18 @@ exports.setUsuarioEstado = async (req, res, next) => {
 
 exports.sessionUser = async (req, res, next) => {
     try {
-        const { usuario, pass } = req.body;
+        const { usuario, pass } = req.body || {};
+
+        // Sin esto, un usuario vacío llegaba a Sequelize como `undefined` y
+        // la respuesta era un 500. Va con HTTP 200 y code 001, como los demás
+        // errores de este login: el panel muestra `message` solo en ese caso.
+        if (typeof usuario !== "string" || !usuario.trim() || typeof pass !== "string" || !pass) {
+            return res.json({
+                code: '001',
+                message: 'Ingresa tu usuario y tu contraseña.',
+                data: null
+            });
+        }
 
         console.log("intento de login con usuario:", usuario);
 
@@ -193,21 +209,15 @@ exports.sessionUser = async (req, res, next) => {
             }
         });
 
-        // Validamos si el usuario existe
-        if (!findOneUser) {
+        // Usuario inexistente y contraseña mala responden igual y tardan lo
+        // mismo (se compara contra un hash de relleno): así no se puede
+        // averiguar qué usuarios existen probando nombres.
+        const hashAComparar = findOneUser ? findOneUser.password : HASH_DE_RELLENO;
+        const claveCorrecta = await bcrypt.compare(pass, hashAComparar);
+        if (!findOneUser || !claveCorrecta) {
             return res.json({
                 code: '001',
-                message: 'Ese usuario no existe',
-                data: null
-            });
-        }
-
-        // Validamos la contraseña. La versión asíncrona no bloquea el servidor
-        // durante el hash (con coste 12 son unos cientos de ms por intento).
-        if (!(await bcrypt.compare(String(pass || ""), findOneUser.password))) {
-            return res.json({
-                code: '001',
-                message: 'Contraseña incorrecta o usuario incorrecto',
+                message: 'Usuario o contraseña incorrectos',
                 data: null
             });
         }

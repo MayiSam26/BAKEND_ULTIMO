@@ -15,4 +15,29 @@ function responderErrorSubida(res, err) {
   return res.status(400).json({ code: "001", message: mensajeSubida(err), data: null });
 }
 
-module.exports = { mensajeSubida, responderErrorSubida };
+/**
+ * Envuelve un middleware de multer (`multer({...}).single("foto")`). Los
+ * controladores le pasan un callback async sin try/catch: si dentro fallaba la
+ * base (p. ej. rechaza un formulario incompleto) la promesa quedaba rechazada
+ * sin dueño y Node cerraba el proceso, tumbando el servidor para todos. Con
+ * esto ese error responde 500 y el servidor sigue.
+ */
+function conCaptura(subida) {
+  return (req, res, callback) =>
+    subida(req, res, (err) => {
+      const fallar = (error) => {
+        console.error("Error procesando una subida:", error);
+        if (!res.headersSent) {
+          res.status(500).json({ code: "001", message: "No se pudo guardar. Revisa que los datos estén completos e inténtalo de nuevo.", data: null });
+        }
+      };
+      try {
+        const resultado = callback(err);
+        if (resultado && typeof resultado.catch === "function") resultado.catch(fallar);
+      } catch (error) {
+        fallar(error);
+      }
+    });
+}
+
+module.exports = { mensajeSubida, responderErrorSubida, conCaptura };

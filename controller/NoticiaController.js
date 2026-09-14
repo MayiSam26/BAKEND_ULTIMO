@@ -1,5 +1,6 @@
 const tblnoticia = require("../Entity/Noticia");
 const multer = require("multer");
+const { conCaptura } = require("../helpers/errorSubida");
 const path = require("path");
 const { Op } = require("sequelize");
 const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
@@ -13,7 +14,7 @@ const storage = multer.diskStorage({
   },
 });
 const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-const upload = multer({
+const upload = conCaptura(multer({
   storage: storage,
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
@@ -23,7 +24,7 @@ const upload = multer({
       cb(new Error("Solo se permiten imágenes (jpg, png, webp, gif)"));
     }
   },
-}).single("imagen");
+}).single("imagen"));
 
 // Admin: todas las noticias, cualquier estado.
 exports.getNoticias = async (req, res, next) => {

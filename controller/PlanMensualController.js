@@ -3,7 +3,7 @@ const sequilize = require("../database/conection")
 const multer = require('multer');
 const path = require('path');
 const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
-const { responderErrorSubida } = require("../helpers/errorSubida");
+const { responderErrorSubida, conCaptura } = require("../helpers/errorSubida");
 
 /**
  * La columna "content" es de tipo JSON: tiene que guardarse como arreglo, no
@@ -31,7 +31,7 @@ const storage = multer.diskStorage({
 });
 
 const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-const upload = multer({
+const upload = conCaptura(multer({
     storage: storage,
     limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
@@ -41,7 +41,7 @@ const upload = multer({
             cb(new Error('Solo se permiten imágenes (jpg, png, webp, gif)'));
         }
     }
-}).single('img');
+}).single('img'));
 
 exports.getPlanMensual = async(req, res) =>{
     try {

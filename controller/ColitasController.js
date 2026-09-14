@@ -10,7 +10,7 @@ const tbltipoanimal = require("../Entity/TipoAnimal");
 const { cerrarApadrinamientosSiSalio } = require("../helpers/apadrinamiento");
 const { sellarCreacion, sellarModificacion } = require("../helpers/auditoria");
 const { conEdad, nacimientoDesdeEstimacion } = require("../helpers/edad");
-const { responderErrorSubida } = require("../helpers/errorSubida");
+const { responderErrorSubida, conCaptura } = require("../helpers/errorSubida");
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -25,7 +25,7 @@ const storage = multer.diskStorage({
 });
 
 const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-const upload = multer({
+const upload = conCaptura(multer({
     storage: storage,
     limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
@@ -35,7 +35,7 @@ const upload = multer({
             cb(new Error('Solo se permiten imágenes (jpg, png, webp, gif)'));
         }
     }
-}).single('foto');
+}).single('foto'));
 
 exports.getColitas = async (req, res) => {
     try {
