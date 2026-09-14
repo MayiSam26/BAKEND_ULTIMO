@@ -48,6 +48,7 @@ const erroresApp = require("./router/ErrorApp");
 const push = require("./router/Push");
 const verifyToken = require("./middleware/auth");
 const { iniciarRecordatorios } = require("./helpers/recordatorios");
+const { iniciarSesionesRevocadas } = require("./helpers/sesionesRevocadas");
 
 require("./Entity/User");
 require("./Entity/TipoPersona");
@@ -72,6 +73,7 @@ require("./Entity/Permiso");
 require("./Entity/Apadrinado");
 require("./Entity/ErrorApp");
 require("./Entity/PushToken");
+require("./Entity/SesionRevocada");
 
 conexion
   .sync()
@@ -79,6 +81,8 @@ conexion
     console.log("Conexion exitosa");
     // Notificaciones de cada mañana (controles veterinarios y visitas).
     iniciarRecordatorios();
+    // Sesiones cerradas con "Cerrar sesión", en memoria para verifyToken.
+    iniciarSesionesRevocadas();
   })
   .catch((error) => console.log("Error de conexion: ", error));
 

@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const { estadoUsuario, motivoRechazo } = require("../helpers/estadoUsuario");
+const { estaRevocada } = require("../helpers/sesionesRevocadas");
 
 module.exports = function verifyToken(req, res, next) {
     const authHeader = req.headers["authorization"];
@@ -17,6 +18,10 @@ module.exports = function verifyToken(req, res, next) {
         // app) solo sirve para esa operación puntual, no como token de sesión.
         if (decoded.purpose) {
             return res.status(401).json({ code: '001', message: 'Token no válido para esta operación' });
+        }
+        // Sesión cerrada con "Cerrar sesión" (se mira en memoria, sin ir a la base).
+        if (estaRevocada(decoded.sid)) {
+            return res.status(401).json({ code: '001', message: 'La sesión se cerró. Vuelve a iniciar sesión.' });
         }
 
         // El token vale 4 h: se contrasta con la cuenta tal como está ahora

@@ -22,6 +22,8 @@ module.exports = () =>{
     router.put("/usuario/password/:id",verifyToken,requireRole("Administrador"),userController.changePasswordAdmin)
     router.post("/session-user",loginLimiter,userController.sessionUser)
     router.post("/session-refresh",refreshLimiter,userController.renovarSesion)
+    // Cerrar sesión: anula en el servidor los tokens de esa sesión (app y panel).
+    router.post("/session-logout",refreshLimiter,userController.cerrarSesion)
 
     //recuperar contraseña (público, con pregunta secreta)
     router.post("/usuario/pregunta",verifyToken,userController.setPreguntaSecreta)
