@@ -2,7 +2,12 @@ const jwt = require("jsonwebtoken");
 
 process.env.JWT_SECRET = "secreto-de-prueba";
 
+// verifyToken consulta el estado actual del usuario: se simula la tabla.
+jest.mock("../../Entity/User", () => ({ findOne: jest.fn() }));
+const tblUser = require("../../Entity/User");
+
 const { tokenAcceso, tokenRenovacion, validarRenovacion, huellaPassword } = require("../sesion");
+const { olvidarUsuario } = require("../estadoUsuario");
 const verifyToken = require("../../middleware/auth");
 
 // La app móvil mantiene la sesión con un token de renovación de 30 días. Lo
@@ -18,20 +23,33 @@ function mockRes() {
   return res;
 }
 
+/** Pasa el token por verifyToken y espera a que deje pasar o responda. */
 function pasarPorAuth(token) {
-  const req = { headers: { authorization: `Bearer ${token}` } };
-  const res = mockRes();
-  const next = jest.fn();
-  verifyToken(req, res, next);
-  return { req, res, next };
+  return new Promise((resolver) => {
+    const req = { headers: { authorization: `Bearer ${token}` } };
+    const res = mockRes();
+    const next = jest.fn(() => resolver({ req, res, next }));
+    res.json = jest.fn(() => {
+      resolver({ req, res, next });
+      return res;
+    });
+    verifyToken(req, res, next);
+  });
 }
 
+beforeEach(() => {
+  tblUser.findOne.mockReset();
+  tblUser.findOne.mockResolvedValue(USUARIO);
+  olvidarUsuario(USUARIO.iduser);
+});
+
 describe("tokens de la sesión", () => {
-  test("el de acceso lleva el mismo contenido que el login de siempre", () => {
+  test("el de acceso lleva el mismo contenido que el login de siempre, más la huella de la contraseña", () => {
     const decoded = jwt.verify(tokenAcceso(USUARIO), process.env.JWT_SECRET);
-    expect(decoded).toMatchObject({ iduser: 7, usuario: "ana", rol: "Voluntario" });
+    expect(decoded).toMatchObject({ iduser: 7, usuario: "ana", rol: "Voluntario", v: huellaPassword(USUARIO.password) });
     expect(decoded.purpose).toBeUndefined();
     expect(decoded.exp - decoded.iat).toBe(4 * 3600);
+    expect(JSON.stringify(decoded)).not.toContain(USUARIO.password);
   });
 
   test("el de renovación dura 30 días y no lleva la contraseña", () => {
@@ -42,22 +60,79 @@ describe("tokens de la sesión", () => {
     expect(JSON.stringify(decoded)).not.toContain(USUARIO.password);
   });
 
-  test("el de acceso pasa por el middleware", () => {
-    const { next, req } = pasarPorAuth(tokenAcceso(USUARIO));
+  test("el de acceso pasa por el middleware", async () => {
+    const { next, req } = await pasarPorAuth(tokenAcceso(USUARIO));
     expect(next).toHaveBeenCalledTimes(1);
     expect(req.user.iduser).toBe(7);
   });
 
-  test("el de renovación NO sirve como token de acceso", () => {
-    const { next, res } = pasarPorAuth(tokenRenovacion(USUARIO));
+  test("el de renovación NO sirve como token de acceso", async () => {
+    const { next, res } = await pasarPorAuth(tokenRenovacion(USUARIO));
     expect(next).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(401);
   });
 
-  test("el de recuperar contraseña tampoco (como antes)", () => {
+  test("el de recuperar contraseña tampoco (como antes)", async () => {
     const reset = jwt.sign({ iduser: 7, purpose: "reset" }, process.env.JWT_SECRET, { expiresIn: "10m" });
-    const { next } = pasarPorAuth(reset);
+    const { next } = await pasarPorAuth(reset);
     expect(next).not.toHaveBeenCalled();
+  });
+});
+
+describe("el token de acceso deja de valer al momento", () => {
+  test("si el Administrador desactiva la cuenta", async () => {
+    const token = tokenAcceso(USUARIO);
+    tblUser.findOne.mockResolvedValue({ ...USUARIO, activo: false });
+    const { next, res } = await pasarPorAuth(token);
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json.mock.calls[0][0].message).toMatch(/desactivada/);
+  });
+
+  test("si la cuenta se borró", async () => {
+    tblUser.findOne.mockResolvedValue(null);
+    const { next } = await pasarPorAuth(tokenAcceso(USUARIO));
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test("si cambió la contraseña", async () => {
+    const token = tokenAcceso(USUARIO);
+    tblUser.findOne.mockResolvedValue({ ...USUARIO, password: "$2b$12$otroHash" });
+    const { res } = await pasarPorAuth(token);
+    expect(res.json.mock.calls[0][0].message).toMatch(/contraseña cambió/);
+  });
+
+  test("si cambió el rol", async () => {
+    const token = tokenAcceso(USUARIO);
+    tblUser.findOne.mockResolvedValue({ ...USUARIO, rol: "Administrador" });
+    const { res } = await pasarPorAuth(token);
+    expect(res.json.mock.calls[0][0].message).toMatch(/rol cambió/);
+  });
+
+  test("un token viejo sin huella se sigue aceptando mientras la cuenta esté activa", async () => {
+    const viejo = jwt.sign({ usuario: "ana", iduser: 7, rol: "Voluntario" }, process.env.JWT_SECRET, { expiresIn: "4h" });
+    const { next } = await pasarPorAuth(viejo);
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  test("se consulta la base una vez por minuto, y olvidarUsuario fuerza a mirar de nuevo", async () => {
+    const token = tokenAcceso(USUARIO);
+    await pasarPorAuth(token);
+    await pasarPorAuth(token);
+    expect(tblUser.findOne).toHaveBeenCalledTimes(1);
+    tblUser.findOne.mockResolvedValue({ ...USUARIO, activo: false });
+    olvidarUsuario(7);
+    const { next } = await pasarPorAuth(token);
+    expect(tblUser.findOne).toHaveBeenCalledTimes(2);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test("si la base no responde no deja a nadie fuera", async () => {
+    const errorConsola = jest.spyOn(console, "error").mockImplementation(() => {});
+    tblUser.findOne.mockRejectedValue(new Error("ECONNREFUSED"));
+    const { next } = await pasarPorAuth(tokenAcceso(USUARIO));
+    expect(next).toHaveBeenCalledTimes(1);
+    errorConsola.mockRestore();
   });
 });
 
