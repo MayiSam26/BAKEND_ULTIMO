@@ -21,8 +21,10 @@ function huellaPassword(passwordHash) {
 }
 
 function tokenAcceso(user) {
+  // `v` (huella de la contraseña) permite que verifyToken rechace el token en
+  // cuanto la contraseña cambia, sin esperar las 4 h.
   return jwt.sign(
-    { usuario: user.usuario, iduser: user.iduser, rol: user.rol },
+    { usuario: user.usuario, iduser: user.iduser, rol: user.rol, v: huellaPassword(user.password) },
     process.env.JWT_SECRET,
     { expiresIn: DURACION_ACCESO }
   );

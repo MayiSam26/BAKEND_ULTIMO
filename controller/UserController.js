@@ -5,6 +5,7 @@ const multer = require("multer");
 const { conCaptura } = require("../helpers/errorSubida");
 const path = require("path");
 const { tokenAcceso, tokenRenovacion, validarRenovacion } = require("../helpers/sesion");
+const { olvidarUsuario } = require("../helpers/estadoUsuario");
 
 // Roles del sistema según la tesis (CU02, CU17, CU18): Administrador,
 // Voluntario y Veterinario. "Persona interesada" no tiene cuenta propia en
@@ -119,6 +120,8 @@ exports.updateUser = async (req, res, next) => {
         if (telefono !== undefined) updates.telefono = telefono || null;
 
         await tblUser.update(updates, { where: { iduser: id } });
+        // Si cambió el rol, sus sesiones abiertas lo notan en la siguiente petición.
+        olvidarUsuario(id);
 
         return res.json({ code: '000', message: 'Se actualizó correctamente', data: null });
     } catch (error) {
@@ -149,6 +152,7 @@ exports.changePasswordAdmin = async (req, res, next) => {
         }, {
             where: { iduser: id }
         });
+        olvidarUsuario(id);
 
         return res.json({ code: '000', message: 'Contraseña actualizada correctamente', data: null });
     } catch (error) {
@@ -174,6 +178,7 @@ exports.setUsuarioEstado = async (req, res, next) => {
         }
 
         await tblUser.update({ activo: !!activo }, { where: { iduser: id } });
+        olvidarUsuario(id);
 
         return res.json({
             code: '000',
@@ -437,6 +442,8 @@ exports.resetPassword = async (req, res, next) => {
         }, {
             where: { iduser: decoded.iduser }
         });
+        // Quien tuviera la sesión abierta con la contraseña vieja queda fuera ya.
+        olvidarUsuario(decoded.iduser);
 
         return res.json({ code: '000', message: 'Contraseña actualizada correctamente. Ya puedes iniciar sesión.', data: null });
     } catch (error) {
