@@ -7,6 +7,13 @@ require("dotenv").config();
 // fuerza a todo el proceso a preferir IPv4 al resolver hostnames.
 require("dns").setDefaultResultOrder("ipv4first");
 
+// Red de seguridad: una promesa rechazada que nadie captura (un await sin
+// try/catch dentro de un callback) hacía que Node cerrara el proceso y el
+// servidor se cayera para todos. Se registra y se sigue atendiendo.
+process.on("unhandledRejection", (motivo) => {
+  console.error("Promesa rechazada sin capturar:", motivo);
+});
+
 const express = require("express");
 const path = require("path");
 const bodyParser = require("body-parser");

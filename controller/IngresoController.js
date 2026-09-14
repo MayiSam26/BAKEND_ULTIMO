@@ -1,6 +1,7 @@
 const sequilize = require("../database/conection");
 const moment = require("moment");
 const multer = require("multer");
+const { conCaptura } = require("../helpers/errorSubida");
 const path = require("path");
 const tblingreso = require("../Entity/Ingresos");
 const tbldonante = require("../Entity/Donante");
@@ -19,7 +20,7 @@ const storage = multer.diskStorage({
 });
 
 const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-const upload = multer({
+const upload = conCaptura(multer({
   storage: storage,
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
@@ -29,7 +30,7 @@ const upload = multer({
       cb(new Error("Solo se permiten imágenes (jpg, png, webp, gif)"));
     }
   },
-}).single("evidencia");
+}).single("evidencia"));
 exports.getIngresos = async (req, res, next) => {
     try {
       // 1. Obtener los ingresos (todos, o una página si la app la pide)

@@ -1,4 +1,5 @@
 const multer = require('multer');
+const { conCaptura } = require("../helpers/errorSubida");
 const path = require('path');
 
 const storage = multer.diskStorage({
@@ -12,7 +13,7 @@ const storage = multer.diskStorage({
 
 const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
-const upload = multer({
+const upload = conCaptura(multer({
     storage: storage,
     limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
     fileFilter: (req, file, cb) => {
@@ -22,7 +23,7 @@ const upload = multer({
         cb(new Error('Solo se permiten imágenes (jpg, png, webp, gif)'));
       }
     }
-}).single('image');
+}).single('image'));
 
 exports.saveFile = async (req, res) => {
   try {
