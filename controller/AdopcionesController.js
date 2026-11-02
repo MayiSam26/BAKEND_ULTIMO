@@ -1,6 +1,7 @@
 const tbladopcion = require("../Entity/Adopciones");
 const tbladoptante = require("../Entity/Adoptantes");
 const tblColitas = require("../Entity/Colitas");
+const tblentrevista = require("../Entity/Entrevista");
 const sequilize = require("../database/conection");
 const moment = require("moment");
 const { Op } = require("sequelize");
@@ -322,6 +323,26 @@ exports.solicitarAdopcion = async (req, res, next) => {
     });
 
     await tblColitas.update(sellarModificacion(req, { estado: 'proceso' }), { where: { idanimal } });
+
+    // El modelo del negocio es Solicitud -> Entrevista y evaluacion -> Adopcion:
+    // ninguna adopcion deberia resolverse sin haber evaluado al postulante. La
+    // solicitud abre por si misma la entrevista, en estado pendiente y con la
+    // fecha del dia, para que el refugio la reprograme al llamar a la persona.
+    // Si esto falla no se devuelve error: la solicitud ya quedo guardada y es
+    // lo que no se puede perder; la entrevista se puede programar a mano.
+    try {
+      await tblentrevista.create({
+        idadopcion: solicitud.idadopcion,
+        iduser: null,
+        Fecha_Entrevista: moment().format('YYYY-MM-DD'),
+        Hora_Entrevista: null,
+        Estado: 'pendiente',
+        Observaciones: 'Generada automáticamente al recibir la solicitud desde la web. Pendiente de coordinar fecha y hora con el postulante.',
+        ...sellarCreacion(req),
+      });
+    } catch (error) {
+      console.log('No se pudo abrir la entrevista de la solicitud:', error);
+    }
 
     res.json({
       code: '000',
